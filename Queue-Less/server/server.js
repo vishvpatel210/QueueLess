@@ -13,6 +13,7 @@ const branchRoutes = require('./routes/branchRoutes');
 const serviceRoutes = require('./routes/serviceRoutes');
 const queueRoutes = require('./routes/queueRoutes');
 const tokenRoutes = require('./routes/tokenRoutes');
+const analyticsRoutes = require('./routes/analyticsRoutes');
 const { getServiceById } = require('./controllers/serviceController');
 
 const app = express();
@@ -45,6 +46,7 @@ app.use('/api/branches/:branchId/services', serviceRoutes);
 app.get('/api/services/:id', getServiceById);
 app.use('/api/queues', queueRoutes);
 app.use('/api/tokens', tokenRoutes);
+app.use('/api/analytics', analyticsRoutes);
 
 // Central Error Handler
 app.use(errorHandler);
