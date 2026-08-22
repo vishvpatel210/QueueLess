@@ -1,5 +1,6 @@
 const Token = require('../models/Token');
 const Queue = require('../models/Queue');
+const queueStateMachine = require('../services/queueStateMachine');
 
 // @desc    Get token details and queue position
 // @route   GET /api/tokens/:id
@@ -81,7 +82,39 @@ const cancelToken = async (req, res, next) => {
   }
 };
 
+// @desc    Admin: Skip customer token
+// @route   POST /api/tokens/:id/skip
+// @access  Protected (Admin)
+const skipToken = async (req, res, next) => {
+  try {
+    const token = await queueStateMachine.skipCustomer(req.params.id);
+    res.status(200).json({
+      success: true,
+      data: token,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Admin: Mark token completed
+// @route   POST /api/tokens/:id/complete
+// @access  Protected (Admin)
+const completeToken = async (req, res, next) => {
+  try {
+    const token = await queueStateMachine.completeCustomer(req.params.id);
+    res.status(200).json({
+      success: true,
+      data: token,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getTokenById,
   cancelToken,
+  skipToken,
+  completeToken,
 };

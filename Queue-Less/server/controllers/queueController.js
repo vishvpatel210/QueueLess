@@ -1,8 +1,8 @@
 const Queue = require('../models/Queue');
 const Token = require('../models/Token');
-const Service = require('../models/Service');
 const generateTokenNumber = require('../utils/generateTokenNumber');
 const calculateWaitTime = require('../utils/calculateWaitTime');
+const queueStateMachine = require('../services/queueStateMachine');
 
 // @desc    Get queue details and status
 // @route   GET /api/queues/:id
@@ -102,7 +102,71 @@ const joinQueue = async (req, res, next) => {
   }
 };
 
+// @desc    Admin: Call next customer in queue
+// @route   POST /api/queues/:id/next
+// @access  Protected (Admin)
+const callNext = async (req, res, next) => {
+  try {
+    const result = await queueStateMachine.callNextCustomer(req.params.id);
+    res.status(200).json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Admin: Pause queue
+// @route   POST /api/queues/:id/pause
+// @access  Protected (Admin)
+const pauseQueue = async (req, res, next) => {
+  try {
+    const queue = await queueStateMachine.pauseQueue(req.params.id);
+    res.status(200).json({
+      success: true,
+      data: queue,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Admin: Resume queue
+// @route   POST /api/queues/:id/resume
+// @access  Protected (Admin)
+const resumeQueue = async (req, res, next) => {
+  try {
+    const queue = await queueStateMachine.resumeQueue(req.params.id);
+    res.status(200).json({
+      success: true,
+      data: queue,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Admin: Close queue
+// @route   POST /api/queues/:id/close
+// @access  Protected (Admin)
+const closeQueue = async (req, res, next) => {
+  try {
+    const queue = await queueStateMachine.closeQueue(req.params.id);
+    res.status(200).json({
+      success: true,
+      data: queue,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getQueueStatus,
   joinQueue,
+  callNext,
+  pauseQueue,
+  resumeQueue,
+  closeQueue,
 };
