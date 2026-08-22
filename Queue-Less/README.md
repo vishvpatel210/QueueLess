@@ -1,50 +1,127 @@
-# Welcome to your Expo app 👋
+# QueueLess
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+> **Smart Digital Queue Management Platform** — Expo SDK 54 · React Native · Node.js · MongoDB · Socket.IO
 
-## Get started
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Expo SDK](https://img.shields.io/badge/Expo-SDK%2054-blueviolet)](https://expo.dev)
+[![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue)](https://www.typescriptlang.org)
 
-1. Install dependencies
+---
 
-   ```bash
-   npm install
-   ```
+## Overview
 
-2. Start the app
+QueueLess is a production-grade mobile platform that enables customers to find nearby businesses, join digital queues, receive tokenized passes, and track their queue position in real time — eliminating physical waiting.
 
-   ```bash
-   npx expo start
-   ```
+Business admins can manage queues, call next customers, skip tokens, complete services, pause/resume queues, and view detailed analytics dashboards.
 
-In the output, you'll find options to open the app in a
+---
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+## Features
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+### Customer Experience
+- 📍 Discover nearby businesses and branches using geolocation
+- 🔍 Search by category (healthcare, banking, government, retail)
+- 🎫 Join queues digitally and receive a token number instantly
+- 📊 Real-time queue position tracking via WebSocket
+- 🔔 Push notification alerts (joining, approaching, your turn)
+- 📷 QR code scanner for direct queue check-in
+- 📋 Clipboard copy for token, booking ID, and coordinates
+- 👤 Contact picker to queue on behalf of someone else
+- 🗺️ Geolocation proximity check-in verification
 
-## Get a fresh project
+### Admin Dashboard
+- 🎛️ Call next customer, skip, complete, undo operations
+- ⏸️ Pause and resume queues
+- 🔒 Close queues for the day
+- 📈 Analytics dashboard with hourly charts, trend graphs, and branch leaderboard
+- 🏆 Business-wide performance leaderboard
 
-When you're ready, run:
+---
 
-```bash
-npm run reset-project
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Mobile | Expo SDK 54, React Native, TypeScript |
+| Navigation | Expo Router (file-based) |
+| State | React Context API |
+| Real-Time | Socket.IO client |
+| Backend | Node.js, Express 4 (MVC) |
+| Database | MongoDB Atlas + Mongoose |
+| Auth | JWT + bcrypt |
+| Location | expo-location |
+| Camera | expo-camera, expo-barcode-scanner |
+| Contacts | expo-contacts |
+
+---
+
+## Project Structure
+
+```
+Queue-Less/
+├── app/                    # Expo Router screens
+│   ├── (auth)/             # Login, Register
+│   ├── (tabs)/             # Home, Explore, Queue, Profile
+│   ├── (admin)/            # Dashboard, Analytics
+│   ├── business/[id].tsx   # Business detail
+│   ├── service/[id].tsx    # Service detail
+│   ├── token/[id].tsx      # Digital Token Pass
+│   ├── scanner.tsx         # QR Code Scanner
+│   ├── location.tsx        # Location check-in
+│   ├── contacts.tsx        # Contact picker
+│   └── notifications.tsx   # Notification settings
+├── components/common/      # UI primitives (Button, Card, Badge, Input, Header)
+├── constants/              # Colors, theme tokens
+├── context/                # AuthContext, SocketContext
+├── hooks/                  # useQueueSocket
+├── services/               # api, clipboard, contact, location, notification
+├── docs/                   # e2e-test-guide, deployment
+└── server/                 # Express MVC backend
+    ├── config/             # db.js, constants.js
+    ├── controllers/        # auth, business, branch, service, queue, token, analytics
+    ├── middleware/         # authMiddleware, errorHandler, asyncHandler
+    ├── models/             # User, Business, Branch, Service, Queue, Token
+    ├── routes/             # All route files
+    └── services/           # queueStateMachine, socketService
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+---
 
-## Learn more
+## Getting Started
 
-To learn more about developing your project with Expo, look at the following resources:
+### Prerequisites
+- Node.js 18+
+- MongoDB Atlas account
+- Expo Go app (for development)
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+### Server Setup
 
-## Join the community
+```bash
+cd Queue-Less/server
+npm install
+cp .env.example .env   # Fill in MONGO_URI and JWT_SECRET
+node server.js
+```
 
-Join our community of developers creating universal apps.
+### Mobile Setup
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+```bash
+cd Queue-Less
+npm install
+npx expo start
+```
+
+Scan the QR code with Expo Go on your phone.
+
+---
+
+## Documentation
+
+- [End-to-End Test Guide](docs/e2e-test-guide.md)
+- [Deployment Guide](docs/deployment.md)
+
+---
+
+## License
+
+MIT — see [LICENSE](LICENSE)
