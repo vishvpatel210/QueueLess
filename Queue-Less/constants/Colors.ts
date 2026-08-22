@@ -1,0 +1,53 @@
+export const Palette = {
+  background: '#0B0D0E',
+  surface: '#151819',
+  card: '#1C2021',
+  primary: '#C7F36B',
+  secondary: '#A8D94A',
+  text: '#F5F5F0',
+  mutedText: '#9CA3AF',
+  success: '#7DDC8A',
+  warning: '#FFB86B',
+  danger: '#FF6B6B',
+  border: '#262B2D',
+  overlay: 'rgba(11, 13, 14, 0.85)',
+};
+
+export const Colors = {
+  dark: {
+    background: Palette.background,
+    surface: Palette.surface,
+    card: Palette.card,
+    text: Palette.text,
+    mutedText: Palette.mutedText,
+    primary: Palette.primary,
+    secondary: Palette.secondary,
+    success: Palette.success,
+    warning: Palette.warning,
+    danger: Palette.danger,
+    border: Palette.border,
+    tint: Palette.primary,
+    icon: Palette.mutedText,
+    tabIconDefault: Palette.mutedText,
+    tabIconSelected: Palette.primary,
+  },
+  light: {
+    background: Palette.background,
+    surface: Palette.surface,
+    card: Palette.card,
+    text: Palette.text,
+    mutedText: Palette.mutedText,
+    primary: Palette.primary,
+    secondary: Palette.secondary,
+    success: Palette.success,
+    warning: Palette.warning,
+    danger: Palette.danger,
+    border: Palette.border,
+    tint: Palette.primary,
+    icon: Palette.mutedText,
+    tabIconDefault: Palette.mutedText,
+    tabIconSelected: Palette.primary,
+  },
+};
+
+export default Colors;
