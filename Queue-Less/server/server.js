@@ -6,6 +6,8 @@ const errorHandler = require('./middleware/errorHandler');
 
 // Route Imports
 const authRoutes = require('./routes/authRoutes');
+const businessRoutes = require('./routes/businessRoutes');
+const branchRoutes = require('./routes/branchRoutes');
 
 const app = express();
 
@@ -27,6 +29,8 @@ app.get('/api/health', (req, res) => {
 
 // API Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/businesses', businessRoutes);
+app.use('/api/branches', branchRoutes);
 
 // Central Error Handler
 app.use(errorHandler);
