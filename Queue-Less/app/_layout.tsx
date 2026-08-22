@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
 import { Palette } from '../constants/Colors';
 import { AuthProvider } from '../context/AuthContext';
+import { SocketProvider } from '../context/SocketContext';
 
 const QueueLessTheme: Theme = {
   dark: true,
@@ -30,20 +31,22 @@ export const unstable_settings = {
 export default function RootLayout() {
   return (
     <AuthProvider>
-      <ThemeProvider value={QueueLessTheme}>
-        <Stack
-          screenOptions={{
-            headerShown: false,
-            contentStyle: { backgroundColor: Palette.background },
-          }}
-        >
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-          <Stack.Screen name="(admin)" options={{ headerShown: false }} />
-          <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-        </Stack>
-        <StatusBar style="light" />
-      </ThemeProvider>
+      <SocketProvider>
+        <ThemeProvider value={QueueLessTheme}>
+          <Stack
+            screenOptions={{
+              headerShown: false,
+              contentStyle: { backgroundColor: Palette.background },
+            }}
+          >
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+            <Stack.Screen name="(admin)" options={{ headerShown: false }} />
+            <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+          </Stack>
+          <StatusBar style="light" />
+        </ThemeProvider>
+      </SocketProvider>
     </AuthProvider>
   );
 }
