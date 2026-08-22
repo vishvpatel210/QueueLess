@@ -1,5 +1,6 @@
 const Queue = require('../models/Queue');
 const Token = require('../models/Token');
+const { emitQueueUpdate, emitTokenCalled } = require('./socketService');
 
 const queueStateMachine = {
   /**
@@ -9,6 +10,7 @@ const queueStateMachine = {
    * 3. Finds next WAITING token by sequenceNumber.
    * 4. Updates next token to CALLED.
    * 5. Updates queue currentTokenNumber & currentTokenId.
+   * 6. Emits Socket.IO live updates to room queue:id and user:id.
    */
   async callNextCustomer(queueId) {
     const queue = await Queue.findById(queueId);
@@ -33,6 +35,13 @@ const queueStateMachine = {
       queue.currentTokenNumber = null;
       queue.currentTokenId = null;
       await queue.save();
+
+      emitQueueUpdate(queueId, {
+        queueId,
+        currentTokenNumber: null,
+        status: queue.status,
+      });
+
       return { queue, nextToken: null, message: 'No waiting customers in queue.' };
     }
 
@@ -44,6 +53,20 @@ const queueStateMachine = {
     queue.currentTokenId = nextToken._id;
     await queue.save();
 
+    // Broadcast Socket.IO Events
+    emitQueueUpdate(queueId, {
+      queueId,
+      currentTokenNumber: nextToken.tokenNumber,
+      currentTokenId: nextToken._id,
+      status: queue.status,
+    });
+
+    emitTokenCalled(nextToken.userId.toString(), {
+      tokenId: nextToken._id,
+      tokenNumber: nextToken.tokenNumber,
+      status: 'CALLED',
+    });
+
     return { queue, nextToken };
   },
 
@@ -53,6 +76,12 @@ const queueStateMachine = {
 
     token.status = 'SKIPPED';
     await token.save();
+
+    emitQueueUpdate(token.queueId.toString(), {
+      queueId: token.queueId.toString(),
+      skippedTokenId: tokenId,
+    });
+
     return token;
   },
 
@@ -63,6 +92,12 @@ const queueStateMachine = {
     token.status = 'COMPLETED';
     token.completedAt = new Date();
     await token.save();
+
+    emitQueueUpdate(token.queueId.toString(), {
+      queueId: token.queueId.toString(),
+      completedTokenId: tokenId,
+    });
+
     return token;
   },
 
@@ -73,6 +108,8 @@ const queueStateMachine = {
       { new: true }
     );
     if (!queue) throw new Error('Queue not found');
+
+    emitQueueUpdate(queueId, { queueId, status: 'PAUSED' });
     return queue;
   },
 
@@ -83,6 +120,8 @@ const queueStateMachine = {
       { new: true }
     );
     if (!queue) throw new Error('Queue not found');
+
+    emitQueueUpdate(queueId, { queueId, status: 'OPEN' });
     return queue;
   },
 
@@ -93,6 +132,8 @@ const queueStateMachine = {
       { new: true }
     );
     if (!queue) throw new Error('Queue not found');
+
+    emitQueueUpdate(queueId, { queueId, status: 'CLOSED' });
     return queue;
   },
 };
