@@ -11,12 +11,24 @@ export type BusinessCategory =
 
 export interface LocationCoordinates {
   type: 'Point';
-  coordinates: [number, number]; // [longitude, latitude]
+  coordinates: [number, number];
 }
 
 export interface OperatingHours {
   open: string;
   close: string;
+}
+
+export interface ServiceItem {
+  _id: string;
+  branchId: string;
+  name: string;
+  description?: string;
+  estimatedDurationMinutes: number;
+  price: number;
+  maxQueueCapacity: number;
+  prefix: string;
+  isActive: boolean;
 }
 
 export interface Branch {
@@ -29,6 +41,7 @@ export interface Branch {
   phone?: string;
   qrCodeUrl?: string;
   isActive: boolean;
+  services?: ServiceItem[];
 }
 
 export interface Business {

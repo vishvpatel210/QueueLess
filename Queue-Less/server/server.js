@@ -8,6 +8,8 @@ const errorHandler = require('./middleware/errorHandler');
 const authRoutes = require('./routes/authRoutes');
 const businessRoutes = require('./routes/businessRoutes');
 const branchRoutes = require('./routes/branchRoutes');
+const serviceRoutes = require('./routes/serviceRoutes');
+const { getServiceById } = require('./controllers/serviceController');
 
 const app = express();
 
@@ -31,6 +33,8 @@ app.get('/api/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/businesses', businessRoutes);
 app.use('/api/branches', branchRoutes);
+app.use('/api/branches/:branchId/services', serviceRoutes);
+app.get('/api/services/:id', getServiceById);
 
 // Central Error Handler
 app.use(errorHandler);
