@@ -1,112 +1,139 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { useRouter } from 'expo-router';
+import { BusinessCategory, Business } from '../../types/business';
+import { Palette } from '../../constants/Colors';
+import { Spacing } from '../../constants/theme';
+import Header from '../../components/common/Header';
+import Input from '../../components/common/Input';
+import CategoryBadge from '../../components/business/CategoryBadge';
+import BusinessCard from '../../components/business/BusinessCard';
 
-import { Collapsible } from '@/components/ui/collapsible';
-import { ExternalLink } from '@/components/external-link';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Fonts } from '@/constants/theme';
+const CATEGORIES: BusinessCategory[] = [
+  'All',
+  'Healthcare',
+  'Salon & Spa',
+  'Bank & Finance',
+  'Retail',
+  'Dining & Cafe',
+  'Government Services',
+  'Service Center',
+];
 
-export default function TabTwoScreen() {
+const EXPLORE_BUSINESSES: Business[] = [
+  {
+    _id: 'b1',
+    name: 'Apex Health Clinic',
+    description: 'Outpatient care, blood tests, and general consultations.',
+    category: 'Healthcare',
+    ownerId: 'admin1',
+    rating: 4.9,
+    reviewCount: 128,
+    createdAt: new Date().toISOString(),
+  },
+  {
+    _id: 'b2',
+    name: 'Luxe Salon & Spa',
+    description: 'Modern hair styling, manicures, and relaxation therapies.',
+    category: 'Salon & Spa',
+    ownerId: 'admin2',
+    rating: 4.8,
+    reviewCount: 94,
+    createdAt: new Date().toISOString(),
+  },
+  {
+    _id: 'b3',
+    name: 'Metro National Bank',
+    description: 'Express teller services, loan consultations, and account support.',
+    category: 'Bank & Finance',
+    ownerId: 'admin3',
+    rating: 4.6,
+    reviewCount: 210,
+    createdAt: new Date().toISOString(),
+  },
+  {
+    _id: 'b4',
+    name: 'TechCare Service Hub',
+    description: 'Express mobile repairs, laptop servicing, and hardware diagnostics.',
+    category: 'Service Center',
+    ownerId: 'admin4',
+    rating: 4.7,
+    reviewCount: 75,
+    createdAt: new Date().toISOString(),
+  },
+];
+
+export default function ExploreScreen() {
+  const router = useRouter();
+  const [search, setSearch] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<BusinessCategory>('All');
+
+  const filtered = EXPLORE_BUSINESSES.filter((b) => {
+    const matchesCat = selectedCategory === 'All' || b.category === selectedCategory;
+    const matchesSearch = b.name.toLowerCase().includes(search.toLowerCase());
+    return matchesCat && matchesSearch;
+  });
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#D0D0D0', dark: '#353636' }}
-      headerImage={
-        <IconSymbol
-          size={310}
-          color="#808080"
-          name="chevron.left.forwardslash.chevron.right"
-          style={styles.headerImage}
+    <View style={styles.container}>
+      <Header title="Explore Services" subtitle="Find queues near you" />
+
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <Input
+          placeholder="Search by business name or service..."
+          value={search}
+          onChangeText={setSearch}
+          containerStyle={styles.searchBox}
         />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText
-          type="title"
-          style={{
-            fontFamily: Fonts.rounded,
-          }}>
-          Explore
-        </ThemedText>
-      </ThemedView>
-      <ThemedText>This app includes example code to help you get started.</ThemedText>
-      <Collapsible title="File-based routing">
-        <ThemedText>
-          This app has two screens:{' '}
-          <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> and{' '}
-          <ThemedText type="defaultSemiBold">app/(tabs)/explore.tsx</ThemedText>
-        </ThemedText>
-        <ThemedText>
-          The layout file in <ThemedText type="defaultSemiBold">app/(tabs)/_layout.tsx</ThemedText>{' '}
-          sets up the tab navigator.
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/router/introduction">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Android, iOS, and web support">
-        <ThemedText>
-          You can open this project on Android, iOS, and the web. To open the web version, press{' '}
-          <ThemedText type="defaultSemiBold">w</ThemedText> in the terminal running this project.
-        </ThemedText>
-      </Collapsible>
-      <Collapsible title="Images">
-        <ThemedText>
-          For static images, you can use the <ThemedText type="defaultSemiBold">@2x</ThemedText> and{' '}
-          <ThemedText type="defaultSemiBold">@3x</ThemedText> suffixes to provide files for
-          different screen densities
-        </ThemedText>
-        <Image
-          source={require('@/assets/images/react-logo.png')}
-          style={{ width: 100, height: 100, alignSelf: 'center' }}
-        />
-        <ExternalLink href="https://reactnative.dev/docs/images">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Light and dark mode components">
-        <ThemedText>
-          This template has light and dark mode support. The{' '}
-          <ThemedText type="defaultSemiBold">useColorScheme()</ThemedText> hook lets you inspect
-          what the user&apos;s current color scheme is, and so you can adjust UI colors accordingly.
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/develop/user-interface/color-themes/">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Animations">
-        <ThemedText>
-          This template includes an example of an animated component. The{' '}
-          <ThemedText type="defaultSemiBold">components/HelloWave.tsx</ThemedText> component uses
-          the powerful{' '}
-          <ThemedText type="defaultSemiBold" style={{ fontFamily: Fonts.mono }}>
-            react-native-reanimated
-          </ThemedText>{' '}
-          library to create a waving hand animation.
-        </ThemedText>
-        {Platform.select({
-          ios: (
-            <ThemedText>
-              The <ThemedText type="defaultSemiBold">components/ParallaxScrollView.tsx</ThemedText>{' '}
-              component provides a parallax effect for the header image.
-            </ThemedText>
-          ),
-        })}
-      </Collapsible>
-    </ParallaxScrollView>
+
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.categoryScroll}
+        >
+          {CATEGORIES.map((cat) => (
+            <CategoryBadge
+              key={cat}
+              category={cat}
+              selected={selectedCategory === cat}
+              onSelect={setSelectedCategory}
+            />
+          ))}
+        </ScrollView>
+
+        <Text style={styles.resultsCount}>{filtered.length} businesses found</Text>
+
+        {filtered.map((b) => (
+          <BusinessCard
+            key={b._id}
+            business={b}
+            onPress={() => router.push(`/business/${b._id}` as any)}
+          />
+        ))}
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  headerImage: {
-    color: '#808080',
-    bottom: -90,
-    left: -35,
-    position: 'absolute',
+  container: {
+    flex: 1,
+    backgroundColor: Palette.background,
   },
-  titleContainer: {
-    flexDirection: 'row',
-    gap: 8,
+  scrollContent: {
+    padding: Spacing.md,
+  },
+  searchBox: {
+    marginBottom: Spacing.sm,
+  },
+  categoryScroll: {
+    paddingVertical: Spacing.xs,
+    marginBottom: Spacing.md,
+  },
+  resultsCount: {
+    fontSize: 14,
+    color: Palette.mutedText,
+    marginBottom: Spacing.sm,
+    fontWeight: '600',
   },
 });
