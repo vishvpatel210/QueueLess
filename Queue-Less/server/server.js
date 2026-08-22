@@ -4,6 +4,9 @@ const connectDB = require('./config/db');
 const { PORT } = require('./config/constants');
 const errorHandler = require('./middleware/errorHandler');
 
+// Route Imports
+const authRoutes = require('./routes/authRoutes');
+
 const app = express();
 
 // Middleware
@@ -21,6 +24,9 @@ app.get('/api/health', (req, res) => {
     timestamp: new Date().toISOString(),
   });
 });
+
+// API Routes
+app.use('/api/auth', authRoutes);
 
 // Central Error Handler
 app.use(errorHandler);
