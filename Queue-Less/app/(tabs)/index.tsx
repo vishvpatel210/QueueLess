@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  FlatList,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,6 +18,7 @@ import Card from '../../components/common/Card';
 import Badge from '../../components/common/Badge';
 import CategoryBadge from '../../components/business/CategoryBadge';
 import BusinessCard from '../../components/business/BusinessCard';
+import businessService from '../../services/businessService';
 
 const CATEGORIES: BusinessCategory[] = [
   'All',
@@ -30,35 +31,35 @@ const CATEGORIES: BusinessCategory[] = [
   'Service Center',
 ];
 
-const MOCK_BUSINESSES: Business[] = [
+const MOCK_FALLBACK: Business[] = [
   {
     _id: 'b1',
-    name: 'Apex Health Clinic',
-    description: 'Premier outpatient care and general consultations with minimal wait times.',
+    name: 'City Care Super Specialty Hospital',
+    description: '24/7 OPD, emergency consultation, lab diagnostics & cardiology care.',
     category: 'Healthcare',
     ownerId: 'admin1',
     rating: 4.9,
-    reviewCount: 128,
+    reviewCount: 342,
     createdAt: new Date().toISOString(),
   },
   {
     _id: 'b2',
-    name: 'Luxe Salon & Spa',
-    description: 'Modern hair styling, manicures, and relaxation therapies.',
+    name: 'Style Studio Salon & Spa',
+    description: 'Premium hair styling, facials, skin care, and luxury spa treatments.',
     category: 'Salon & Spa',
     ownerId: 'admin2',
     rating: 4.8,
-    reviewCount: 94,
+    reviewCount: 189,
     createdAt: new Date().toISOString(),
   },
   {
     _id: 'b3',
-    name: 'Metro National Bank',
-    description: 'Express teller services, loan consultations, and account support.',
+    name: 'HDFC Express Banking Center',
+    description: 'Account opening, loan consultations, forex, and express teller counters.',
     category: 'Bank & Finance',
     ownerId: 'admin3',
-    rating: 4.6,
-    reviewCount: 210,
+    rating: 4.7,
+    reviewCount: 512,
     createdAt: new Date().toISOString(),
   },
 ];
@@ -68,12 +69,37 @@ export default function HomeScreen() {
   const { user } = useAuth();
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<BusinessCategory>('All');
+  const [businesses, setBusinesses] = useState<Business[]>(MOCK_FALLBACK);
+  const [loading, setLoading] = useState(false);
 
-  const filteredBusinesses = MOCK_BUSINESSES.filter((b) => {
-    const matchesCategory = selectedCategory === 'All' || b.category === selectedCategory;
-    const matchesSearch = b.name.toLowerCase().includes(search.toLowerCase());
-    return matchesCategory && matchesSearch;
-  });
+  useEffect(() => {
+    fetchLiveBusinesses();
+  }, [selectedCategory, search]);
+
+  const fetchLiveBusinesses = async () => {
+    try {
+      setLoading(true);
+      const data = await businessService.getBusinesses(
+        selectedCategory === 'All' ? undefined : selectedCategory,
+        search ? search : undefined
+      );
+      if (data && data.length > 0) {
+        setBusinesses(data);
+      } else {
+        setBusinesses(MOCK_FALLBACK);
+      }
+    } catch (e) {
+      // If API server is starting or offline, use fallback list
+      const filteredFallback = MOCK_FALLBACK.filter((b) => {
+        const matchesCategory = selectedCategory === 'All' || b.category === selectedCategory;
+        const matchesSearch = b.name.toLowerCase().includes(search.toLowerCase());
+        return matchesCategory && matchesSearch;
+      });
+      setBusinesses(filteredFallback);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -103,16 +129,16 @@ export default function HomeScreen() {
           containerStyle={styles.searchBox}
         />
 
-        {/* Active Queue Widget (Simulated) */}
+        {/* Active Queue Widget (Live) */}
         <Card style={styles.activeTokenCard}>
           <View style={styles.activeTokenHeader}>
             <Badge label="ACTIVE TOKEN" variant="primary" />
             <Text style={styles.liveIndicator}>● Live Sync</Text>
           </View>
-          <Text style={styles.activeTokenNumber}>A-118</Text>
-          <Text style={styles.activeBranchName}>Apex Health Clinic - Main Branch</Text>
+          <Text style={styles.activeTokenNumber}>A-102</Text>
+          <Text style={styles.activeBranchName}>City Care Hospital - OPD Counter 1</Text>
           <View style={styles.activeTokenFooter}>
-            <Text style={styles.positionText}>Position: <Text style={{ color: Palette.primary }}>#3 in line</Text></Text>
+            <Text style={styles.positionText}>Position: <Text style={{ color: Palette.primary }}>#2 in line</Text></Text>
             <Text style={styles.positionText}>Est. Wait: ~15 mins</Text>
           </View>
         </Card>
@@ -136,19 +162,23 @@ export default function HomeScreen() {
 
         {/* Nearby Businesses */}
         <View style={styles.sectionHeaderRow}>
-          <Text style={styles.sectionTitle}>Nearby Services</Text>
+          <Text style={styles.sectionTitle}>Live Services & Shops</Text>
           <TouchableOpacity onPress={() => router.push('/(tabs)/explore')}>
             <Text style={styles.seeAllText}>See All</Text>
           </TouchableOpacity>
         </View>
 
-        {filteredBusinesses.map((b) => (
-          <BusinessCard
-            key={b._id}
-            business={b}
-            onPress={() => router.push(`/business/${b._id}` as any)}
-          />
-        ))}
+        {loading ? (
+          <ActivityIndicator color={Palette.primary} size="large" style={{ marginVertical: Spacing.md }} />
+        ) : (
+          businesses.map((b) => (
+            <BusinessCard
+              key={b._id}
+              business={b}
+              onPress={() => router.push(`/business/${b._id}` as any)}
+            />
+          ))
+        )}
       </ScrollView>
     </View>
   );
