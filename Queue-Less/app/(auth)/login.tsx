@@ -7,6 +7,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../context/AuthContext';
@@ -24,18 +25,33 @@ export default function LoginScreen() {
   const [errorMessage, setErrorMessage] = useState('');
 
   const handleLogin = async () => {
-    if (!email || !password) {
-      setErrorMessage('Please enter email and password');
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanPassword = password.trim();
+
+    if (!cleanEmail || !cleanPassword) {
+      setErrorMessage('Please enter both email and password.');
       return;
     }
     setErrorMessage('');
     try {
-      await login({ email, password });
+      await login({ email: cleanEmail, password: cleanPassword });
       router.replace('/(tabs)');
     } catch (err: any) {
-      setErrorMessage(
-        err.response?.data?.message || 'Failed to login. Please try again.'
-      );
+      const msg =
+        err.response?.data?.message ||
+        err.message ||
+        'Failed to login. Please check your credentials and network connection.';
+      setErrorMessage(msg);
+    }
+  };
+
+  const handleQuickDemoLogin = (demoRole: 'customer' | 'admin') => {
+    if (demoRole === 'admin') {
+      setEmail('admin@queueless.io');
+      setPassword('Admin123!');
+    } else {
+      setEmail('customer@queueless.io');
+      setPassword('Customer123!');
     }
   };
 
@@ -62,6 +78,25 @@ export default function LoginScreen() {
               <Text style={styles.errorText}>{errorMessage}</Text>
             </View>
           ) : null}
+
+          {/* Quick Demo Credentials Fill Buttons */}
+          <View style={styles.demoFillContainer}>
+            <Text style={styles.demoFillLabel}>Quick Test Login:</Text>
+            <View style={styles.demoFillButtons}>
+              <TouchableOpacity
+                style={styles.demoBtn}
+                onPress={() => handleQuickDemoLogin('customer')}
+              >
+                <Text style={styles.demoBtnText}>Customer</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.demoBtn}
+                onPress={() => handleQuickDemoLogin('admin')}
+              >
+                <Text style={styles.demoBtnText}>Shop / Admin</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
 
           <Input
             label="Email Address"
@@ -147,7 +182,7 @@ const styles = StyleSheet.create({
   formSubtitle: {
     fontSize: 14,
     color: Palette.mutedText,
-    marginBottom: Spacing.lg,
+    marginBottom: Spacing.md,
     marginTop: 2,
   },
   errorBanner: {
@@ -160,7 +195,40 @@ const styles = StyleSheet.create({
   },
   errorText: {
     color: Palette.danger,
-    fontSize: 14,
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  demoFillContainer: {
+    marginBottom: Spacing.md,
+    padding: Spacing.sm,
+    backgroundColor: Palette.surface,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    borderColor: Palette.border,
+  },
+  demoFillLabel: {
+    fontSize: 12,
+    color: Palette.mutedText,
+    marginBottom: 6,
+    fontWeight: '600',
+  },
+  demoFillButtons: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+  },
+  demoBtn: {
+    flex: 1,
+    paddingVertical: Spacing.xs + 2,
+    backgroundColor: Palette.card,
+    borderRadius: BorderRadius.sm,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: Palette.primary,
+  },
+  demoBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: Palette.primary,
   },
   forgotButton: {
     alignSelf: 'flex-end',

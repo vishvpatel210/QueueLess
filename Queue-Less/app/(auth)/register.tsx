@@ -28,18 +28,36 @@ export default function RegisterScreen() {
   const [errorMessage, setErrorMessage] = useState('');
 
   const handleRegister = async () => {
-    if (!name || !email || !password) {
-      setErrorMessage('Please fill in all required fields');
+    const cleanName = name.trim();
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanPhone = phone.trim();
+    const cleanPassword = password.trim();
+
+    if (!cleanName || !cleanEmail || !cleanPassword) {
+      setErrorMessage('Please fill in Name, Email, and Password.');
       return;
     }
+    if (cleanPassword.length < 6) {
+      setErrorMessage('Password must be at least 6 characters long.');
+      return;
+    }
+
     setErrorMessage('');
     try {
-      await register({ name, email, phone, password, role });
+      await register({
+        name: cleanName,
+        email: cleanEmail,
+        phone: cleanPhone,
+        password: cleanPassword,
+        role,
+      });
       router.replace('/(tabs)');
     } catch (err: any) {
-      setErrorMessage(
-        err.response?.data?.message || 'Registration failed. Please try again.'
-      );
+      const msg =
+        err.response?.data?.message ||
+        err.message ||
+        'Registration failed. Please check your details and try again.';
+      setErrorMessage(msg);
     }
   };
 
@@ -100,7 +118,7 @@ export default function RegisterScreen() {
                   role === 'admin' && styles.roleTextActive,
                 ]}
               >
-                Business Owner
+                Shop / Hospital Admin
               </Text>
             </TouchableOpacity>
           </View>
@@ -123,7 +141,7 @@ export default function RegisterScreen() {
 
           <Input
             label="Phone Number"
-            placeholder="+1 234 567 8900"
+            placeholder="+91 98765 43210"
             value={phone}
             onChangeText={setPhone}
             keyboardType="phone-pad"
@@ -209,7 +227,8 @@ const styles = StyleSheet.create({
   },
   errorText: {
     color: Palette.danger,
-    fontSize: 14,
+    fontSize: 13,
+    lineHeight: 18,
   },
   roleLabel: {
     fontSize: 14,
@@ -236,7 +255,7 @@ const styles = StyleSheet.create({
     backgroundColor: Palette.primary,
   },
   roleText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     color: Palette.mutedText,
   },

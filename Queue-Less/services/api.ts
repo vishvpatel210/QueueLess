@@ -29,18 +29,36 @@ export const api = {
       headers['Authorization'] = `Bearer ${authToken}`;
     }
 
-    const response = await fetch(`${API_BASE_URL}${url}`, {
-      method: 'GET',
-      headers,
-    });
+    try {
+      const response = await fetch(`${API_BASE_URL}${url}`, {
+        method: 'GET',
+        headers,
+      });
 
-    const data = await response.json();
-    if (!response.ok) {
-      const error: any = new Error(data.message || 'API request failed');
-      error.response = { data, status: response.status };
-      throw error;
+      let data: any;
+      try {
+        data = await response.json();
+      } catch (jsonErr) {
+        data = { message: `Server returned HTTP status ${response.status}` };
+      }
+
+      if (!response.ok) {
+        const error: any = new Error(data.message || 'API request failed');
+        error.response = { data, status: response.status };
+        throw error;
+      }
+      return { data, status: response.status };
+    } catch (networkErr: any) {
+      if (networkErr.response) throw networkErr;
+      const customErr: any = new Error(
+        `Cannot connect to backend server at ${API_BASE_URL}. Is Node.js server running?`
+      );
+      customErr.response = {
+        data: { message: `Cannot connect to server at ${API_BASE_URL}. Ensure server is running on port 5000.` },
+        status: 0,
+      };
+      throw customErr;
     }
-    return { data, status: response.status };
   },
 
   async post<T>(url: string, body?: any): Promise<ApiResponse<T>> {
@@ -51,19 +69,37 @@ export const api = {
       headers['Authorization'] = `Bearer ${authToken}`;
     }
 
-    const response = await fetch(`${API_BASE_URL}${url}`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(body),
-    });
+    try {
+      const response = await fetch(`${API_BASE_URL}${url}`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(body),
+      });
 
-    const data = await response.json();
-    if (!response.ok) {
-      const error: any = new Error(data.message || 'API request failed');
-      error.response = { data, status: response.status };
-      throw error;
+      let data: any;
+      try {
+        data = await response.json();
+      } catch (jsonErr) {
+        data = { message: `Server returned HTTP status ${response.status}` };
+      }
+
+      if (!response.ok) {
+        const error: any = new Error(data.message || 'API request failed');
+        error.response = { data, status: response.status };
+        throw error;
+      }
+      return { data, status: response.status };
+    } catch (networkErr: any) {
+      if (networkErr.response) throw networkErr;
+      const customErr: any = new Error(
+        `Cannot connect to backend server at ${API_BASE_URL}. Ensure server is running on port 5000.`
+      );
+      customErr.response = {
+        data: { message: `Cannot connect to server at ${API_BASE_URL}. Ensure server is running on port 5000.` },
+        status: 0,
+      };
+      throw customErr;
     }
-    return { data, status: response.status };
   },
 };
 
