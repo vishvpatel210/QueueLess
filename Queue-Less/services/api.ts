@@ -1,9 +1,21 @@
 import { Platform } from 'react-native';
+import Constants from 'expo-constants';
 
 const getDefaultBaseUrl = () => {
+  // Extract dynamic debugger IP host when running via Expo Go on physical device
+  const debuggerHost = Constants.expoConfig?.hostUri || (Constants as any).manifest2?.extra?.expoGo?.debuggerHost;
+  
+  if (debuggerHost) {
+    const ip = debuggerHost.split(':')[0];
+    if (ip && ip !== 'localhost' && ip !== '127.0.0.1') {
+      return `http://${ip}:5000/api`;
+    }
+  }
+
   if (Platform.OS === 'android') {
     return 'http://10.0.2.2:5000/api';
   }
+
   return 'http://localhost:5000/api';
 };
 
@@ -51,7 +63,7 @@ export const api = {
     } catch (networkErr: any) {
       if (networkErr.response) throw networkErr;
       const customErr: any = new Error(
-        `Cannot connect to backend server at ${API_BASE_URL}. Is Node.js server running?`
+        `Cannot connect to backend server at ${API_BASE_URL}. Ensure server is running on port 5000.`
       );
       customErr.response = {
         data: { message: `Cannot connect to server at ${API_BASE_URL}. Ensure server is running on port 5000.` },
