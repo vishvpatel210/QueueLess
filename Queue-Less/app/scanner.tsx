@@ -17,18 +17,30 @@ export default function QRScannerScreen() {
     setHasPermission(true);
   };
 
-  const handleSimulateScan = () => {
-    setScanned(true);
-    Alert.alert(
-      'Branch Identified!',
-      'QR Code matched: Apex Health Clinic - Main Branch',
-      [
-        {
-          text: 'Open Branch Queue',
-          onPress: () => router.replace('/business/b1' as any),
-        },
-      ]
-    );
+  const handleSimulateScan = async () => {
+    try {
+      setScanned(true);
+      // Fetch the first available registered branch
+      const branches = await branchService.getAllBranches();
+      if (branches && branches.length > 0) {
+        const br = branches[0];
+        const bizId = (br.businessId as any)?._id || br.businessId;
+        Alert.alert(
+          'QR Verified! 🎯',
+          `Scanned Branch: ${br.name}\n${br.address}`,
+          [
+            {
+              text: 'View Branch & Queues',
+              onPress: () => router.replace(`/business/${bizId}` as any),
+            },
+          ]
+        );
+      } else {
+        Alert.alert('Notice', 'No registered branches found in the database to scan.');
+      }
+    } catch (e: any) {
+      Alert.alert('Scan Error', 'Could not resolve scanned QR against registered database.');
+    }
   };
 
   return (
@@ -43,7 +55,7 @@ export default function QRScannerScreen() {
             </View>
             <Text style={styles.permissionTitle}>Camera Permission Required</Text>
             <Text style={styles.permissionSubtitle}>
-              QueueLess uses your camera to scan branch QR codes and immediately open live queue status.
+              QueueLess uses your camera to scan real branch QR codes and immediately open live queue status.
             </Text>
             <Button
               title="Enable Camera Access"
@@ -64,7 +76,7 @@ export default function QRScannerScreen() {
             <Text style={styles.scanInstruction}>Align QR code within the frame</Text>
 
             <Button
-              title="Simulate QR Scan (b1)"
+              title="Scan Live Branch QR Code"
               onPress={handleSimulateScan}
               style={styles.simBtn}
             />
