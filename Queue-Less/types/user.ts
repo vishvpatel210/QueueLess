@@ -1,4 +1,4 @@
-export type UserRole = 'customer' | 'admin';
+export type UserRole = 'CUSTOMER' | 'SHOP_ADMIN' | 'customer' | 'admin';
 
 export interface User {
   id: string;
@@ -10,12 +10,42 @@ export interface User {
   createdAt: string;
 }
 
-export interface RegisterData {
+export interface CustomerRegisterData {
   name: string;
   email: string;
-  password: string;
   phone?: string;
-  role?: UserRole;
+  password: string;
+  confirmPassword?: string;
+}
+
+export interface ShopAdminRegisterData {
+  name: string;
+  email: string;
+  phone?: string;
+  password: string;
+  confirmPassword?: string;
+  businessName: string;
+  category: string;
+  description?: string;
+  website?: string;
+  businessPhone?: string;
+  businessEmail?: string;
+  branchName: string;
+  address: string;
+  city?: string;
+  state?: string;
+  pincode?: string;
+  landmark?: string;
+  latitude?: number;
+  longitude?: number;
+  operatingHours?: { open: string; close: string };
+  services?: Array<{
+    name: string;
+    description?: string;
+    estimatedDurationMinutes: number;
+    price?: number;
+    prefix?: string;
+  }>;
 }
 
 export interface LoginCredentials {

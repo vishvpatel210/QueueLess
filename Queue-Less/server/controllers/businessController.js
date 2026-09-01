@@ -125,9 +125,67 @@ const createBusiness = async (req, res, next) => {
   }
 };
 
+// @desc    Update business
+// @route   PATCH /api/businesses/:id
+// @access  Protected (Admin / Owner)
+const updateBusiness = async (req, res, next) => {
+  try {
+    const { name, description, category, logoUrl, phone, email, website, status } = req.body;
+    const business = req.business || (await Business.findById(req.params.id));
+
+    if (!business) {
+      return res.status(404).json({ success: false, message: 'Business not found' });
+    }
+
+    if (name) business.name = name.trim();
+    if (description !== undefined) business.description = description.trim();
+    if (category) business.category = category;
+    if (logoUrl !== undefined) business.logoUrl = logoUrl;
+    if (phone !== undefined) business.phone = phone.trim();
+    if (email !== undefined) business.email = email.trim().toLowerCase();
+    if (website !== undefined) business.website = website.trim();
+    if (status && ['PENDING', 'ACTIVE', 'SUSPENDED', 'REJECTED'].includes(status)) {
+      business.status = status;
+    }
+
+    await business.save();
+
+    res.status(200).json({
+      success: true,
+      data: business,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Get current Shop Admin's owned businesses with branches
+// @route   GET /api/businesses/me/admin
+// @access  Protected (Admin)
+const getMyBusinesses = async (req, res, next) => {
+  try {
+    const businesses = await Business.find({ ownerId: req.user.id });
+    const bizIds = businesses.map((b) => b._id);
+    const branches = await Branch.find({ businessId: { $in: bizIds } });
+
+    res.status(200).json({
+      success: true,
+      count: businesses.length,
+      data: {
+        businesses,
+        branches,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getBusinesses,
   getNearbyBusinesses,
   getBusinessById,
   createBusiness,
+  updateBusiness,
+  getMyBusinesses,
 };
