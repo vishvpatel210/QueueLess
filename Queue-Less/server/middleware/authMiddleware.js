@@ -41,13 +41,29 @@ const protect = async (req, res, next) => {
   }
 };
 
-// Grant access to specific roles
+// Grant access to specific roles (supporting both SHOP_ADMIN/admin and CUSTOMER/customer)
 const authorize = (...roles) => {
   return (req, res, next) => {
-    if (!req.user || !roles.includes(req.user.role)) {
+    if (!req.user) {
       return res.status(403).json({
         success: false,
-        message: `User role '${req.user ? req.user.role : 'none'}' is not authorized to perform this action.`,
+        message: 'Not authorized to perform this action.',
+      });
+    }
+
+    const userRole = (req.user.role || '').toUpperCase();
+    const allowedRoles = roles.map((r) => {
+      const u = r.toUpperCase();
+      if (u === 'ADMIN') return 'SHOP_ADMIN';
+      return u;
+    });
+
+    const isMatch = allowedRoles.includes(userRole) || (userRole === 'ADMIN' && allowedRoles.includes('SHOP_ADMIN'));
+
+    if (!isMatch) {
+      return res.status(403).json({
+        success: false,
+        message: `User role '${req.user.role}' is not authorized to perform this action.`,
       });
     }
     next();

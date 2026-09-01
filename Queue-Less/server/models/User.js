@@ -35,8 +35,8 @@ const UserSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ['customer', 'admin'],
-      default: 'customer',
+      enum: ['CUSTOMER', 'SHOP_ADMIN', 'customer', 'admin'],
+      default: 'CUSTOMER',
     },
     pushToken: {
       type: String,
@@ -48,8 +48,11 @@ const UserSchema = new mongoose.Schema(
   }
 );
 
-// Hash password before saving
+// Hash password before saving & normalize role
 UserSchema.pre('save', async function (next) {
+  if (this.role === 'admin') this.role = 'SHOP_ADMIN';
+  if (this.role === 'customer') this.role = 'CUSTOMER';
+
   if (!this.isModified('passwordHash')) {
     return next();
   }
@@ -65,7 +68,9 @@ UserSchema.methods.matchPassword = async function (enteredPassword) {
 
 // Generate JWT token
 UserSchema.methods.generateAuthToken = function () {
-  return jwt.sign({ id: this._id, role: this.role }, JWT_SECRET, {
+  const normalizedRole =
+    this.role === 'admin' ? 'SHOP_ADMIN' : this.role === 'customer' ? 'CUSTOMER' : this.role;
+  return jwt.sign({ id: this._id, role: normalizedRole }, JWT_SECRET, {
     expiresIn: JWT_EXPIRE,
   });
 };

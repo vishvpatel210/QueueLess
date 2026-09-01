@@ -26,9 +26,31 @@ const BusinessSchema = new mongoose.Schema(
       ],
       index: true,
     },
+    email: {
+      type: String,
+      default: '',
+      trim: true,
+      lowercase: true,
+    },
+    phone: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    website: {
+      type: String,
+      default: '',
+      trim: true,
+    },
     logoUrl: {
       type: String,
       default: '',
+    },
+    status: {
+      type: String,
+      enum: ['PENDING', 'ACTIVE', 'SUSPENDED', 'REJECTED'],
+      default: 'ACTIVE',
+      index: true,
     },
     ownerId: {
       type: mongoose.Schema.Types.ObjectId,

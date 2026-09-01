@@ -17,6 +17,26 @@ const BranchSchema = new mongoose.Schema(
       type: String,
       required: [true, 'Please provide branch address'],
     },
+    city: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    state: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    pincode: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    landmark: {
+      type: String,
+      default: '',
+      trim: true,
+    },
     location: {
       type: {
         type: String,
@@ -35,6 +55,17 @@ const BranchSchema = new mongoose.Schema(
     phone: {
       type: String,
       default: '',
+    },
+    email: {
+      type: String,
+      default: '',
+      trim: true,
+      lowercase: true,
+    },
+    website: {
+      type: String,
+      default: '',
+      trim: true,
     },
     qrCodeUrl: {
       type: String,

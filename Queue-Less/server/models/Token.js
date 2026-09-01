@@ -8,6 +8,16 @@ const TokenSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    branchId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Branch',
+      index: true,
+    },
+    serviceId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Service',
+      index: true,
+    },
     tokenNumber: {
       type: String,
       required: true,
@@ -48,12 +58,15 @@ const TokenSchema = new mongoose.Schema(
       coordinates: [Number],
       isCheckedIn: { type: Boolean, default: false },
     },
+    checkInAt: { type: Date },
     estimatedWaitTimeMinutes: {
       type: Number,
       default: 0,
     },
+    joinedAt: { type: Date, default: Date.now },
     calledAt: { type: Date },
     completedAt: { type: Date },
+    cancelledAt: { type: Date },
   },
   {
     timestamps: true,
