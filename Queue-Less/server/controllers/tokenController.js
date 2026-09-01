@@ -7,10 +7,20 @@ const queueStateMachine = require('../services/queueStateMachine');
 // @access  Protected
 const getTokenById = async (req, res, next) => {
   try {
-    const token = await Token.findById(req.params.id).populate({
-      path: 'queueId',
-      populate: ['branchId', 'serviceId'],
-    });
+    const token = await Token.findById(req.params.id)
+      .populate({
+        path: 'queueId',
+        populate: [
+          {
+            path: 'branchId',
+            populate: { path: 'businessId' },
+          },
+          {
+            path: 'serviceId',
+          },
+        ],
+      })
+      .populate('userId', 'name email phone');
 
     if (!token) {
       return res.status(404).json({
@@ -21,7 +31,7 @@ const getTokenById = async (req, res, next) => {
 
     // Calculate people ahead if still waiting
     let peopleAhead = 0;
-    if (token.status === 'WAITING') {
+    if (token.status === 'WAITING' && token.queueId) {
       peopleAhead = await Token.countDocuments({
         queueId: token.queueId._id,
         status: 'WAITING',
@@ -35,6 +45,39 @@ const getTokenById = async (req, res, next) => {
         ...token.toObject(),
         peopleAhead,
       },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Get current user's active tokens
+// @route   GET /api/tokens/active
+// @access  Protected
+const getMyActiveTokens = async (req, res, next) => {
+  try {
+    const tokens = await Token.find({
+      userId: req.user.id,
+      status: { $in: ['WAITING', 'SERVING'] },
+    })
+      .sort({ createdAt: -1 })
+      .populate({
+        path: 'queueId',
+        populate: [
+          {
+            path: 'branchId',
+            populate: { path: 'businessId' },
+          },
+          {
+            path: 'serviceId',
+          },
+        ],
+      });
+
+    res.status(200).json({
+      success: true,
+      count: tokens.length,
+      data: tokens,
     });
   } catch (error) {
     next(error);
@@ -114,6 +157,7 @@ const completeToken = async (req, res, next) => {
 
 module.exports = {
   getTokenById,
+  getMyActiveTokens,
   cancelToken,
   skipToken,
   completeToken,

@@ -28,6 +28,11 @@ export const queueService = {
     const response = await api.post<{ success: boolean; data: TokenItem }>(`/tokens/${tokenId}/cancel`);
     return response.data.data;
   },
+
+  async getMyActiveTokens(): Promise<TokenItem[]> {
+    const response = await api.get<{ success: boolean; data: TokenItem[] }>('/tokens/active');
+    return response.data.data;
+  },
 };
 
 export default queueService;

@@ -1,5 +1,14 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Alert, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  Alert,
+  TouchableOpacity,
+  ActivityIndicator,
+  RefreshControl,
+} from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Palette } from '../../constants/Colors';
@@ -9,15 +18,45 @@ import Card from '../../components/common/Card';
 import Badge from '../../components/common/Badge';
 import Button from '../../components/common/Button';
 import clipboardService from '../../services/clipboardService';
-
-const TOKEN_NUMBER = 'A-118';
-const BOOKING_ID = 'BK-984210';
+import queueService from '../../services/queueService';
+import { TokenItem } from '../../types/queue';
 
 export default function DigitalTokenScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
 
-  const [status, setStatus] = useState<'WAITING' | 'CALLED' | 'COMPLETED' | 'CANCELLED'>('WAITING');
+  const [token, setToken] = useState<TokenItem | null>(null);
+  const [peopleAhead, setPeopleAhead] = useState<number>(0);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [refreshing, setRefreshing] = useState<boolean>(false);
+  const [cancelling, setCancelling] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (id) {
+      fetchTokenDetails();
+      // Poll every 10 seconds for real-time status update
+      const interval = setInterval(fetchTokenDetails, 10000);
+      return () => clearInterval(interval);
+    }
+  }, [id]);
+
+  const fetchTokenDetails = async () => {
+    try {
+      const data: any = await queueService.getTokenById(id);
+      setToken(data);
+      setPeopleAhead(data.peopleAhead ?? 0);
+    } catch (err: any) {
+      console.log('Error fetching token:', err);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchTokenDetails();
+  }, [id]);
 
   const handleCancelToken = () => {
     Alert.alert(
@@ -28,46 +67,111 @@ export default function DigitalTokenScreen() {
         {
           text: 'Cancel Token',
           style: 'destructive',
-          onPress: () => setStatus('CANCELLED'),
+          onPress: async () => {
+            try {
+              setCancelling(true);
+              const updated = await queueService.cancelToken(id);
+              setToken(updated);
+              Alert.alert('Token Cancelled', 'Your token pass has been cancelled.');
+            } catch (err: any) {
+              const msg = err.response?.data?.message || err.message || 'Failed to cancel token.';
+              Alert.alert('Error', msg);
+            } finally {
+              setCancelling(false);
+            }
+          },
         },
       ]
     );
   };
 
+  if (loading) {
+    return (
+      <View style={styles.centerContainer}>
+        <ActivityIndicator size="large" color={Palette.primary} />
+        <Text style={styles.loadingText}>Fetching digital queue pass...</Text>
+      </View>
+    );
+  }
+
+  if (!token) {
+    return (
+      <View style={styles.centerContainer}>
+        <Ionicons name="alert-circle-outline" size={48} color={Palette.danger} />
+        <Text style={styles.errorText}>Digital token pass not found.</Text>
+        <Button
+          title="Back to Home"
+          onPress={() => router.replace('/(tabs)' as any)}
+          style={{ marginTop: Spacing.md }}
+        />
+      </View>
+    );
+  }
+
+  const queueData = (token as any).queueId;
+  const branchData = queueData?.branchId;
+  const businessData = branchData?.businessId;
+  const serviceData = queueData?.serviceId;
+
+  const branchName = branchData?.name || 'Registered Branch';
+  const businessName = businessData?.name || 'Registered Business';
+  const serviceName = serviceData?.name || 'Live Service';
+  const branchAddress = branchData?.address || '';
+  const branchPhone = branchData?.phone || businessData?.phone || '';
+
   const getStatusBadge = () => {
-    switch (status) {
-      case 'CALLED':
-        return <Badge label="YOUR TURN! PLEASE PROCEED" variant="warning" />;
+    switch (token.status) {
+      case 'SERVING':
+        return <Badge label="YOUR TURN! PLEASE PROCEED TO COUNTER" variant="warning" />;
       case 'COMPLETED':
         return <Badge label="SERVICE COMPLETED" variant="success" />;
       case 'CANCELLED':
         return <Badge label="TOKEN CANCELLED" variant="danger" />;
+      case 'SKIPPED':
+        return <Badge label="TOKEN SKIPPED" variant="danger" />;
       case 'WAITING':
       default:
         return <Badge label="WAITING IN QUEUE" variant="primary" />;
     }
   };
 
+  const formattedDate = new Date(token.createdAt || Date.now()).toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+
   return (
     <View style={styles.container}>
       <Header title="Digital Pass" showBack />
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={Palette.primary}
+            colors={[Palette.primary]}
+          />
+        }
+      >
         <Card style={styles.passCard}>
-          <Text style={styles.passHeaderTitle}>QueueLess Digital Token</Text>
-          <Text style={styles.passSubtitle}>Apex Health Clinic - Main Branch</Text>
+          <Text style={styles.passHeaderTitle}>QueueLess Digital Pass</Text>
+          <Text style={styles.passSubtitle}>
+            {branchName} • {businessName}
+          </Text>
 
           <View style={styles.statusRow}>{getStatusBadge()}</View>
 
           {/* Big Token Number with Copy Action */}
           <View style={styles.tokenDisplayContainer}>
             <Text style={styles.tokenLabel}>TOKEN NUMBER</Text>
-            <Text style={styles.tokenNumber}>{TOKEN_NUMBER}</Text>
-            <Text style={styles.serviceName}>General OPD Consultation</Text>
+            <Text style={styles.tokenNumber}>{token.tokenNumber}</Text>
+            <Text style={styles.serviceName}>{serviceName}</Text>
 
             <TouchableOpacity
               style={styles.copyTokenBtn}
-              onPress={() => clipboardService.copyTokenNumber(TOKEN_NUMBER)}
+              onPress={() => clipboardService.copyTokenNumber(token.tokenNumber)}
               activeOpacity={0.75}
             >
               <Ionicons name="copy-outline" size={16} color={Palette.primary} />
@@ -75,99 +179,98 @@ export default function DigitalTokenScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Stats Bar */}
+          {/* Real Live Stats Bar */}
           <View style={styles.statsBar}>
             <View style={styles.statItem}>
-              <Text style={styles.statVal}>3</Text>
+              <Text style={styles.statVal}>
+                {token.status === 'WAITING' ? peopleAhead : 0}
+              </Text>
               <Text style={styles.statLbl}>People Ahead</Text>
             </View>
             <View style={styles.divider} />
             <View style={styles.statItem}>
-              <Text style={styles.statVal}>~15m</Text>
+              <Text style={styles.statVal}>
+                {token.status === 'WAITING'
+                  ? `~${peopleAhead * (serviceData?.estimatedDurationMinutes || 15)}m`
+                  : '—'}
+              </Text>
               <Text style={styles.statLbl}>Est. Wait Time</Text>
             </View>
           </View>
         </Card>
 
-        {/* Details Card with Copy Actions */}
+        {/* Real Details Card */}
         <Card style={styles.detailsCard}>
           <Text style={styles.detailsTitle}>Booking Information</Text>
 
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>For Person:</Text>
-            <Text style={styles.infoValue}>Myself (John Doe)</Text>
+            <Text style={styles.infoValue}>{token.forPersonName || 'Myself'}</Text>
           </View>
 
-          {/* Booking ID Row with Copy */}
           <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Booking ID:</Text>
+            <Text style={styles.infoLabel}>Token Pass ID:</Text>
             <TouchableOpacity
               style={styles.inlineRow}
-              onPress={() => clipboardService.copyBookingId(BOOKING_ID)}
+              onPress={() => clipboardService.copyBookingId(token._id)}
             >
-              <Text style={styles.infoValue}>{BOOKING_ID}</Text>
+              <Text style={[styles.infoValue, { fontSize: 12 }]}>{token._id}</Text>
               <Ionicons name="copy-outline" size={14} color={Palette.primary} style={{ marginLeft: 6 }} />
             </TouchableOpacity>
           </View>
 
           <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Issued At:</Text>
-            <Text style={styles.infoValue}>10:15 AM, Today</Text>
+            <Text style={styles.infoLabel}>Issued Time:</Text>
+            <Text style={styles.infoValue}>{formattedDate}</Text>
           </View>
         </Card>
 
         {/* Clipboard Actions Card */}
         <Card style={styles.actionsCard}>
-          <Text style={styles.detailsTitle}>Copy & Share</Text>
+          <Text style={styles.detailsTitle}>Copy & Share Real Details</Text>
 
           <TouchableOpacity
             style={styles.actionRow}
             onPress={() =>
               clipboardService.copyQueueDetails([
-                { label: 'Token Number', value: TOKEN_NUMBER },
-                { label: 'Booking ID', value: BOOKING_ID },
-                { label: 'Service', value: 'General OPD Consultation' },
-                { label: 'Branch', value: 'Apex Health Clinic - Main Branch' },
-                { label: 'Status', value: status },
+                { label: 'Token Number', value: token.tokenNumber },
+                { label: 'Token ID', value: token._id },
+                { label: 'Service', value: serviceName },
+                { label: 'Branch', value: branchName },
+                { label: 'Status', value: token.status },
               ])
             }
           >
             <Ionicons name="document-text-outline" size={20} color={Palette.primary} />
-            <Text style={styles.actionText}>Copy Queue Details</Text>
+            <Text style={styles.actionText}>Copy Queue Pass Details</Text>
             <Ionicons name="chevron-forward" size={16} color={Palette.mutedText} />
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.actionRow}
-            onPress={() =>
-              clipboardService.copyBusinessInfo([
-                { label: 'Business', value: 'Apex Health Clinic' },
-                { label: 'Branch', value: 'Main Branch' },
-                { label: 'Address', value: '104 Tech Boulevard, Downtown' },
-                { label: 'Phone', value: '+1 (555) 234-5678' },
-              ])
-            }
-          >
-            <Ionicons name="business-outline" size={20} color={Palette.primary} />
-            <Text style={styles.actionText}>Copy Business Info</Text>
-            <Ionicons name="chevron-forward" size={16} color={Palette.mutedText} />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.actionRow, { borderBottomWidth: 0 }]}
-            onPress={() => clipboardService.copyCoordinates(37.7749, -122.4194)}
-          >
-            <Ionicons name="location-outline" size={20} color={Palette.primary} />
-            <Text style={styles.actionText}>Copy Branch Coordinates</Text>
-            <Ionicons name="chevron-forward" size={16} color={Palette.mutedText} />
-          </TouchableOpacity>
+          {branchAddress ? (
+            <TouchableOpacity
+              style={[styles.actionRow, { borderBottomWidth: 0 }]}
+              onPress={() =>
+                clipboardService.copyBusinessInfo([
+                  { label: 'Business', value: businessName },
+                  { label: 'Branch', value: branchName },
+                  { label: 'Address', value: branchAddress },
+                  { label: 'Phone', value: branchPhone },
+                ])
+              }
+            >
+              <Ionicons name="business-outline" size={20} color={Palette.primary} />
+              <Text style={styles.actionText}>Copy Branch & Contact Info</Text>
+              <Ionicons name="chevron-forward" size={16} color={Palette.mutedText} />
+            </TouchableOpacity>
+          ) : null}
         </Card>
 
         {/* Cancel Action */}
-        {status === 'WAITING' && (
+        {token.status === 'WAITING' && (
           <Button
             title="Cancel Queue Token"
             variant="danger"
+            loading={cancelling}
             onPress={handleCancelToken}
             style={styles.cancelBtn}
           />
@@ -182,8 +285,27 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Palette.background,
   },
+  centerContainer: {
+    flex: 1,
+    backgroundColor: Palette.background,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: Spacing.xl,
+  },
+  loadingText: {
+    color: Palette.mutedText,
+    marginTop: Spacing.sm,
+    fontSize: 14,
+  },
+  errorText: {
+    color: Palette.danger,
+    fontSize: 16,
+    fontWeight: '700',
+    marginTop: Spacing.sm,
+  },
   scrollContent: {
     padding: Spacing.md,
+    paddingBottom: Spacing.xxl,
   },
   passCard: {
     alignItems: 'center',
@@ -328,3 +450,5 @@ const styles = StyleSheet.create({
     marginTop: Spacing.xl,
   },
 });
+
+// End of digital token screen

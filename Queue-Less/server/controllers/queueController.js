@@ -76,6 +76,8 @@ const joinQueue = async (req, res, next) => {
 
     const token = await Token.create({
       queueId: queue._id,
+      branchId: queue.branchId,
+      serviceId: queue.serviceId._id || queue.serviceId,
       tokenNumber,
       sequenceNumber,
       userId: req.user.id,
@@ -83,6 +85,7 @@ const joinQueue = async (req, res, next) => {
       forPersonPhone: forPersonPhone || '',
       status: 'WAITING',
       estimatedWaitTimeMinutes: estWaitMinutes,
+      joinedAt: new Date(),
     });
 
     // Increment queue token count
