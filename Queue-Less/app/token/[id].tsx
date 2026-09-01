@@ -19,6 +19,7 @@ import Badge from '../../components/common/Badge';
 import Button from '../../components/common/Button';
 import clipboardService from '../../services/clipboardService';
 import queueService from '../../services/queueService';
+import { getSocket, joinQueueRoom, leaveQueueRoom, onQueueUpdate, onTokenCalled } from '../../services/socket';
 import { TokenItem } from '../../types/queue';
 
 export default function DigitalTokenScreen() {
@@ -34,11 +35,33 @@ export default function DigitalTokenScreen() {
   useEffect(() => {
     if (id) {
       fetchTokenDetails();
-      // Poll every 10 seconds for real-time status update
-      const interval = setInterval(fetchTokenDetails, 10000);
+      const interval = setInterval(fetchTokenDetails, 15000);
       return () => clearInterval(interval);
     }
   }, [id]);
+
+  useEffect(() => {
+    if (token?.queueId) {
+      const qId = typeof token.queueId === 'object' ? (token.queueId as any)._id : token.queueId;
+      if (qId) {
+        joinQueueRoom(qId);
+        const unsubQueue = onQueueUpdate(() => {
+          fetchTokenDetails();
+        });
+        const unsubToken = onTokenCalled((data) => {
+          if (data.tokenId === id || data.tokenNumber === token.tokenNumber) {
+            Alert.alert('🔔 IT IS YOUR TURN!', 'Your token has been called by the counter. Please proceed immediately!');
+            fetchTokenDetails();
+          }
+        });
+        return () => {
+          unsubQueue();
+          unsubToken();
+          leaveQueueRoom(qId);
+        };
+      }
+    }
+  }, [token?.queueId, id]);
 
   const fetchTokenDetails = async () => {
     try {

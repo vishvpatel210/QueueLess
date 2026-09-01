@@ -19,6 +19,7 @@ import Badge from '../../components/common/Badge';
 import Button from '../../components/common/Button';
 import businessService from '../../services/businessService';
 import queueService from '../../services/queueService';
+import { joinQueueRoom, leaveQueueRoom, onQueueUpdate } from '../../services/socket';
 import { Business, Branch, ServiceItem } from '../../types/business';
 import { TokenItem, QueueItem } from '../../types/queue';
 
@@ -44,11 +45,19 @@ export default function AdminDashboardScreen() {
   }, []);
 
   useEffect(() => {
-    if (selectedService?.queue?._id || activeQueue?._id) {
-      const qId = selectedService?.queue?._id || activeQueue?._id;
+    const qId = selectedService?.queue?._id || activeQueue?._id;
+    if (qId) {
       loadQueueData(qId);
+      joinQueueRoom(qId);
+      const unsub = onQueueUpdate(() => {
+        loadQueueData(qId);
+      });
+      return () => {
+        unsub();
+        leaveQueueRoom(qId);
+      };
     }
-  }, [selectedService]);
+  }, [selectedService, activeQueue?._id]);
 
   const loadAdminData = async () => {
     try {
