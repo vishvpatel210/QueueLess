@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -6,19 +6,25 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
+  RefreshControl,
+  Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import * as Location from 'expo-location';
 import { useAuth } from '../../context/AuthContext';
-import { BusinessCategory, Business } from '../../types/business';
+import { BusinessCategory, NearbyBranchItem } from '../../types/business';
+import { TokenItem } from '../../types/queue';
 import { Palette } from '../../constants/Colors';
 import { Spacing, BorderRadius } from '../../constants/theme';
 import Input from '../../components/common/Input';
 import Card from '../../components/common/Card';
 import Badge from '../../components/common/Badge';
+import Button from '../../components/common/Button';
 import CategoryBadge from '../../components/business/CategoryBadge';
 import BusinessCard from '../../components/business/BusinessCard';
 import businessService from '../../services/businessService';
+import queueService from '../../services/queueService';
 
 const CATEGORIES: BusinessCategory[] = [
   'All',
@@ -31,86 +37,99 @@ const CATEGORIES: BusinessCategory[] = [
   'Service Center',
 ];
 
-const MOCK_FALLBACK: Business[] = [
-  {
-    _id: 'b1',
-    name: 'City Care Super Specialty Hospital',
-    description: '24/7 OPD, emergency consultation, lab diagnostics & cardiology care.',
-    category: 'Healthcare',
-    ownerId: 'admin1',
-    rating: 4.9,
-    reviewCount: 342,
-    createdAt: new Date().toISOString(),
-  },
-  {
-    _id: 'b2',
-    name: 'Style Studio Salon & Spa',
-    description: 'Premium hair styling, facials, skin care, and luxury spa treatments.',
-    category: 'Salon & Spa',
-    ownerId: 'admin2',
-    rating: 4.8,
-    reviewCount: 189,
-    createdAt: new Date().toISOString(),
-  },
-  {
-    _id: 'b3',
-    name: 'HDFC Express Banking Center',
-    description: 'Account opening, loan consultations, forex, and express teller counters.',
-    category: 'Bank & Finance',
-    ownerId: 'admin3',
-    rating: 4.7,
-    reviewCount: 512,
-    createdAt: new Date().toISOString(),
-  },
-];
-
 export default function HomeScreen() {
   const router = useRouter();
   const { user } = useAuth();
+
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<BusinessCategory>('All');
-  const [businesses, setBusinesses] = useState<Business[]>(MOCK_FALLBACK);
-  const [loading, setLoading] = useState(false);
+  const [nearbyBranches, setNearbyBranches] = useState<NearbyBranchItem[]>([]);
+  const [activeToken, setActiveToken] = useState<TokenItem | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [userCoords, setUserCoords] = useState<{ latitude: number; longitude: number }>({
+    latitude: 19.0760,
+    longitude: 72.8777,
+  });
+  const [locationStatus, setLocationStatus] = useState<string>('Detecting GPS...');
 
   useEffect(() => {
-    fetchLiveBusinesses();
-  }, [selectedCategory, search]);
+    initLocationAndFetch();
+  }, []);
 
-  const fetchLiveBusinesses = async () => {
+  useEffect(() => {
+    fetchNearby();
+  }, [selectedCategory, search, userCoords]);
+
+  const initLocationAndFetch = async () => {
     try {
-      setLoading(true);
-      const data = await businessService.getBusinesses(
-        selectedCategory === 'All' ? undefined : selectedCategory,
-        search ? search : undefined
-      );
-      if (data && data.length > 0) {
-        setBusinesses(data);
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status === 'granted') {
+        const loc = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        });
+        setUserCoords({
+          latitude: loc.coords.latitude,
+          longitude: loc.coords.longitude,
+        });
+        setLocationStatus('GPS Active');
       } else {
-        setBusinesses(MOCK_FALLBACK);
+        setLocationStatus('Location access off');
       }
     } catch (e) {
-      // If API server is starting or offline, use fallback list
-      const filteredFallback = MOCK_FALLBACK.filter((b) => {
-        const matchesCategory = selectedCategory === 'All' || b.category === selectedCategory;
-        const matchesSearch = b.name.toLowerCase().includes(search.toLowerCase());
-        return matchesCategory && matchesSearch;
-      });
-      setBusinesses(filteredFallback);
-    } finally {
-      setLoading(false);
+      setLocationStatus('GPS unavailable');
     }
   };
 
+  const fetchNearby = async () => {
+    try {
+      setLoading(true);
+      const data = await businessService.getNearbyBusinesses(
+        userCoords.latitude,
+        userCoords.longitude,
+        selectedCategory === 'All' ? undefined : selectedCategory,
+        search ? search : undefined,
+        50000 // 50km radius
+      );
+      setNearbyBranches(data || []);
+    } catch (e) {
+      console.log('Error fetching nearby businesses:', e);
+      setNearbyBranches([]);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    initLocationAndFetch();
+    fetchNearby();
+  }, [userCoords, selectedCategory, search]);
+
   return (
     <View style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={Palette.primary}
+            colors={[Palette.primary]}
+          />
+        }
+      >
         {/* Header */}
         <View style={styles.topHeader}>
           <View>
             <Text style={styles.greeting}>
               Hello, {user ? user.name.split(' ')[0] : 'Guest'} 👋
             </Text>
-            <Text style={styles.headerSubtitle}>Queue digital, skip the crowd.</Text>
+            <View style={styles.locationRow}>
+              <Ionicons name="location" size={14} color={Palette.primary} />
+              <Text style={styles.locationText}>{locationStatus}</Text>
+            </View>
           </View>
 
           <TouchableOpacity
@@ -123,25 +142,33 @@ export default function HomeScreen() {
 
         {/* Search Input */}
         <Input
-          placeholder="Search clinic, salon, bank, service..."
+          placeholder="Search registered clinic, salon, shop..."
           value={search}
           onChangeText={setSearch}
           containerStyle={styles.searchBox}
         />
 
-        {/* Active Queue Widget (Live) */}
-        <Card style={styles.activeTokenCard}>
-          <View style={styles.activeTokenHeader}>
-            <Badge label="ACTIVE TOKEN" variant="primary" />
-            <Text style={styles.liveIndicator}>● Live Sync</Text>
-          </View>
-          <Text style={styles.activeTokenNumber}>A-102</Text>
-          <Text style={styles.activeBranchName}>City Care Hospital - OPD Counter 1</Text>
-          <View style={styles.activeTokenFooter}>
-            <Text style={styles.positionText}>Position: <Text style={{ color: Palette.primary }}>#2 in line</Text></Text>
-            <Text style={styles.positionText}>Est. Wait: ~15 mins</Text>
-          </View>
-        </Card>
+        {/* Active Token Card (Only rendered if customer has a real active token) */}
+        {activeToken ? (
+          <Card style={styles.activeTokenCard}>
+            <View style={styles.activeTokenHeader}>
+              <Badge label="YOUR ACTIVE TOKEN" variant="primary" />
+              <Text style={styles.liveIndicator}>● Live Sync</Text>
+            </View>
+            <Text style={styles.activeTokenNumber}>{activeToken.tokenNumber}</Text>
+            <Text style={styles.activeBranchName}>
+              {(activeToken as any).branchName || 'Registered Branch'}
+            </Text>
+            <View style={styles.activeTokenFooter}>
+              <Text style={styles.positionText}>
+                People ahead: <Text style={{ color: Palette.primary }}>{activeToken.estimatedWaitTimeMinutes}m wait</Text>
+              </Text>
+              <TouchableOpacity onPress={() => router.push(`/token/${activeToken._id}` as any)}>
+                <Text style={styles.viewPassLink}>View Pass →</Text>
+              </TouchableOpacity>
+            </View>
+          </Card>
+        ) : null}
 
         {/* Category Horizontal Scroll */}
         <Text style={styles.sectionTitle}>Categories</Text>
@@ -160,22 +187,46 @@ export default function HomeScreen() {
           ))}
         </ScrollView>
 
-        {/* Nearby Businesses */}
+        {/* Section Header */}
         <View style={styles.sectionHeaderRow}>
-          <Text style={styles.sectionTitle}>Live Services & Shops</Text>
+          <Text style={styles.sectionTitle}>
+            Live Places Nearby ({nearbyBranches.length})
+          </Text>
           <TouchableOpacity onPress={() => router.push('/(tabs)/explore')}>
-            <Text style={styles.seeAllText}>See All</Text>
+            <Text style={styles.seeAllText}>Radar View</Text>
           </TouchableOpacity>
         </View>
 
-        {loading ? (
-          <ActivityIndicator color={Palette.primary} size="large" style={{ marginVertical: Spacing.md }} />
+        {/* List of Real Database Businesses or Empty State */}
+        {loading && !refreshing ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator color={Palette.primary} size="large" />
+            <Text style={styles.loadingText}>Searching registered businesses nearby...</Text>
+          </View>
+        ) : nearbyBranches.length === 0 ? (
+          <Card style={styles.emptyStateCard}>
+            <View style={styles.emptyIconCircle}>
+              <Ionicons name="storefront-outline" size={36} color={Palette.mutedText} />
+            </View>
+            <Text style={styles.emptyTitle}>No businesses found nearby</Text>
+            <Text style={styles.emptySubtitle}>
+              {search || selectedCategory !== 'All'
+                ? 'No registered places matched your filter or search query.'
+                : 'No businesses have registered in your area yet. Once a Shop Admin onboarded their business, it will appear here.'}
+            </Text>
+            <Button
+              title="Refresh Location & Data"
+              variant="outline"
+              onPress={onRefresh}
+              style={styles.refreshBtn}
+            />
+          </Card>
         ) : (
-          businesses.map((b) => (
+          nearbyBranches.map((item) => (
             <BusinessCard
-              key={b._id}
-              business={b}
-              onPress={() => router.push(`/business/${b._id}` as any)}
+              key={item._id}
+              item={item}
+              onPress={() => router.push(`/business/${item.business._id}` as any)}
             />
           ))
         )}
@@ -192,6 +243,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: Spacing.md,
     paddingTop: Spacing.xl,
+    paddingBottom: Spacing.xxl,
   },
   topHeader: {
     flexDirection: 'row',
@@ -204,10 +256,16 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: Palette.text,
   },
-  headerSubtitle: {
-    fontSize: 14,
-    color: Palette.mutedText,
+  locationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
     marginTop: 2,
+  },
+  locationText: {
+    fontSize: 12,
+    color: Palette.mutedText,
+    fontWeight: '600',
   },
   qrScannerButton: {
     width: 48,
@@ -220,7 +278,7 @@ const styles = StyleSheet.create({
     borderColor: Palette.border,
   },
   searchBox: {
-    marginBottom: Spacing.md,
+    marginBottom: Spacing.sm,
   },
   activeTokenCard: {
     backgroundColor: Palette.surface,
@@ -253,6 +311,7 @@ const styles = StyleSheet.create({
   activeTokenFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
     marginTop: Spacing.md,
     paddingTop: Spacing.sm,
     borderTopWidth: 1,
@@ -262,6 +321,11 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: Palette.mutedText,
     fontWeight: '600',
+  },
+  viewPassLink: {
+    fontSize: 13,
+    color: Palette.primary,
+    fontWeight: '700',
   },
   sectionTitle: {
     fontSize: 18,
@@ -280,8 +344,50 @@ const styles = StyleSheet.create({
     marginTop: Spacing.sm,
   },
   seeAllText: {
-    fontSize: 14,
+    fontSize: 13,
     color: Palette.primary,
     fontWeight: '700',
+  },
+  loadingContainer: {
+    padding: Spacing.xl,
+    alignItems: 'center',
+  },
+  loadingText: {
+    color: Palette.mutedText,
+    marginTop: Spacing.sm,
+    fontSize: 13,
+  },
+  emptyStateCard: {
+    alignItems: 'center',
+    padding: Spacing.xl,
+    marginTop: Spacing.sm,
+    backgroundColor: Palette.surface,
+  },
+  emptyIconCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: Palette.card,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: Spacing.md,
+    borderWidth: 1,
+    borderColor: Palette.border,
+  },
+  emptyTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: Palette.text,
+    marginBottom: Spacing.xs,
+  },
+  emptySubtitle: {
+    fontSize: 13,
+    color: Palette.mutedText,
+    textAlign: 'center',
+    lineHeight: 18,
+    marginBottom: Spacing.lg,
+  },
+  refreshBtn: {
+    width: '100%',
   },
 });

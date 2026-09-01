@@ -50,9 +50,45 @@ export interface Business {
   description?: string;
   category: BusinessCategory;
   logoUrl?: string;
+  phone?: string;
+  email?: string;
+  website?: string;
+  status?: string;
   ownerId: string;
   rating: number;
   reviewCount: number;
   branches?: Branch[];
   createdAt: string;
+}
+
+export interface NearbyBranchItem {
+  _id: string;
+  branchName: string;
+  address: string;
+  city?: string;
+  state?: string;
+  pincode?: string;
+  landmark?: string;
+  phone?: string;
+  email?: string;
+  website?: string;
+  location: LocationCoordinates;
+  operatingHours: OperatingHours;
+  distanceKm: number;
+  business: {
+    _id: string;
+    name: string;
+    category: BusinessCategory;
+    description?: string;
+    logoUrl?: string;
+    rating: number;
+    reviewCount: number;
+    status: string;
+  };
+  queueSummary: {
+    totalWaiting: number;
+    estimatedWaitMinutes: number;
+    currentServingToken: string | null;
+    openQueuesCount: number;
+  };
 }
