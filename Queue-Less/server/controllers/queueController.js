@@ -37,6 +37,44 @@ const getQueueStatus = async (req, res, next) => {
   }
 };
 
+// @desc    Get all tokens in a queue (waiting, serving, history)
+// @route   GET /api/queues/:id/tokens
+// @access  Protected (Admin / SHOP_ADMIN)
+const getQueueTokens = async (req, res, next) => {
+  try {
+    const queue = await Queue.findById(req.params.id);
+    if (!queue) {
+      return res.status(404).json({
+        success: false,
+        message: 'Queue not found',
+      });
+    }
+
+    const tokens = await Token.find({ queueId: queue._id })
+      .sort({ sequenceNumber: 1 })
+      .populate('userId', 'name email phone');
+
+    const waitingTokens = tokens.filter((t) => t.status === 'WAITING');
+    const servingToken = tokens.find((t) => t.status === 'SERVING') || null;
+    const completedTokens = tokens.filter((t) => t.status === 'COMPLETED');
+    const skippedTokens = tokens.filter((t) => t.status === 'SKIPPED');
+
+    res.status(200).json({
+      success: true,
+      data: {
+        queue,
+        waitingTokens,
+        servingToken,
+        completedCount: completedTokens.length,
+        skippedCount: skippedTokens.length,
+        allTokens: tokens,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // @desc    Join queue and issue new digital token
 // @route   POST /api/queues/:id/join
 // @access  Protected (Customer)
@@ -167,6 +205,7 @@ const closeQueue = async (req, res, next) => {
 
 module.exports = {
   getQueueStatus,
+  getQueueTokens,
   joinQueue,
   callNext,
   pauseQueue,

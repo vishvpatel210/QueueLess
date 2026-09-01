@@ -29,8 +29,55 @@ export const queueService = {
     return response.data.data;
   },
 
-  async getMyActiveTokens(): Promise<TokenItem[]> {
-    const response = await api.get<{ success: boolean; data: TokenItem[] }>('/tokens/active');
+  async getQueueTokens(queueId: string): Promise<{
+    queue: QueueItem;
+    waitingTokens: TokenItem[];
+    servingToken: TokenItem | null;
+    completedCount: number;
+    skippedCount: number;
+    allTokens: TokenItem[];
+  }> {
+    const response = await api.get<{
+      success: boolean;
+      data: {
+        queue: QueueItem;
+        waitingTokens: TokenItem[];
+        servingToken: TokenItem | null;
+        completedCount: number;
+        skippedCount: number;
+        allTokens: TokenItem[];
+      };
+    }>(`/queues/${queueId}/tokens`);
+    return response.data.data;
+  },
+
+  async callNext(queueId: string): Promise<any> {
+    const response = await api.post<{ success: boolean; data: any }>(`/queues/${queueId}/next`);
+    return response.data.data;
+  },
+
+  async skipToken(tokenId: string): Promise<TokenItem> {
+    const response = await api.post<{ success: boolean; data: TokenItem }>(`/tokens/${tokenId}/skip`);
+    return response.data.data;
+  },
+
+  async completeToken(tokenId: string): Promise<TokenItem> {
+    const response = await api.post<{ success: boolean; data: TokenItem }>(`/tokens/${tokenId}/complete`);
+    return response.data.data;
+  },
+
+  async pauseQueue(queueId: string): Promise<QueueItem> {
+    const response = await api.post<{ success: boolean; data: QueueItem }>(`/queues/${queueId}/pause`);
+    return response.data.data;
+  },
+
+  async resumeQueue(queueId: string): Promise<QueueItem> {
+    const response = await api.post<{ success: boolean; data: QueueItem }>(`/queues/${queueId}/resume`);
+    return response.data.data;
+  },
+
+  async closeQueue(queueId: string): Promise<QueueItem> {
+    const response = await api.post<{ success: boolean; data: QueueItem }>(`/queues/${queueId}/close`);
     return response.data.data;
   },
 };
