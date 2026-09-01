@@ -198,7 +198,7 @@ const getNearbyBusinesses = async (req, res, next) => {
   }
 };
 
-// @desc    Get single business by ID with branches
+// @desc    Get single business by ID with branches, services, and live queues
 // @route   GET /api/businesses/:id
 // @access  Public
 const getBusinessById = async (req, res, next) => {
@@ -212,12 +212,62 @@ const getBusinessById = async (req, res, next) => {
     }
 
     const branches = await Branch.find({ businessId: business._id, isActive: true });
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    // Enriched branches with their services and live queue metrics
+    const enrichedBranches = await Promise.all(
+      branches.map(async (branch) => {
+        const services = await Service.find({ branchId: branch._id, isActive: true });
+
+        const enrichedServices = await Promise.all(
+          services.map(async (srv) => {
+            const queue = await Queue.findOne({
+              branchId: branch._id,
+              serviceId: srv._id,
+              date: todayStr,
+            });
+
+            let waitingCount = 0;
+            let currentServingToken = null;
+
+            if (queue) {
+              waitingCount = await Token.countDocuments({
+                queueId: queue._id,
+                status: 'WAITING',
+              });
+              currentServingToken = queue.currentTokenNumber || null;
+            }
+
+            const estimatedWaitMinutes = waitingCount * srv.estimatedDurationMinutes;
+
+            return {
+              ...srv.toObject(),
+              queue: queue
+                ? {
+                    _id: queue._id,
+                    status: queue.status,
+                    totalTokensIssued: queue.totalTokensIssued,
+                    currentTokenNumber: currentServingToken,
+                    waitingCount,
+                    estimatedWaitMinutes,
+                  }
+                : null,
+            };
+          })
+        );
+
+        return {
+          ...branch.toObject(),
+          services: enrichedServices,
+        };
+      })
+    );
 
     res.status(200).json({
       success: true,
       data: {
         ...business.toObject(),
-        branches,
+        branches: enrichedBranches,
       },
     });
   } catch (error) {

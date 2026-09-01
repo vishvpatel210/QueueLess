@@ -1,5 +1,13 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  ActivityIndicator,
+  Alert,
+} from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Palette } from '../../constants/Colors';
@@ -8,37 +16,126 @@ import Header from '../../components/common/Header';
 import Card from '../../components/common/Card';
 import Badge from '../../components/common/Badge';
 import Button from '../../components/common/Button';
+import Input from '../../components/common/Input';
+import serviceService, { ServiceWithQueue } from '../../services/serviceService';
+import queueService from '../../services/queueService';
 
 export default function ServiceDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+
+  const [service, setService] = useState<ServiceWithQueue | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const [forWhom, setForWhom] = useState<'myself' | 'other'>('myself');
+  const [personName, setPersonName] = useState('');
+  const [personPhone, setPersonPhone] = useState('');
+
+  useEffect(() => {
+    if (id) {
+      loadServiceDetails();
+    }
+  }, [id]);
+
+  const loadServiceDetails = async () => {
+    try {
+      setLoading(true);
+      const data = await serviceService.getServiceById(id);
+      setService(data);
+    } catch (err) {
+      console.log('Error loading service:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleBookToken = async () => {
+    if (!service || !service.queue) {
+      Alert.alert('Queue Unavailable', 'The queue for this service is not open today.');
+      return;
+    }
+
+    if (forWhom === 'other' && !personName.trim()) {
+      Alert.alert('Missing Details', 'Please enter the name of the person this token is for.');
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      const result = await queueService.joinQueue(
+        service.queue._id,
+        forWhom === 'myself' ? 'Myself' : personName.trim(),
+        forWhom === 'other' ? personPhone.trim() : undefined
+      );
+
+      // Navigate to live token status screen
+      router.replace(`/token/${result.token._id}` as any);
+    } catch (err: any) {
+      const msg = err.response?.data?.message || err.message || 'Failed to issue token.';
+      Alert.alert('Booking Error', msg);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.centerContainer}>
+        <ActivityIndicator size="large" color={Palette.primary} />
+        <Text style={styles.loadingText}>Loading queue service...</Text>
+      </View>
+    );
+  }
+
+  if (!service) {
+    return (
+      <View style={styles.centerContainer}>
+        <Text style={styles.errorText}>Service not found.</Text>
+        <Button title="Go Back" onPress={() => router.back()} style={{ marginTop: Spacing.md }} />
+      </View>
+    );
+  }
+
+  const waitingCount = service.queue?.waitingCount || 0;
+  const currentToken = service.queue?.currentTokenNumber || 'None';
+  const estWait = waitingCount * service.estimatedDurationMinutes;
 
   return (
     <View style={styles.container}>
-      <Header title="Join Queue" showBack />
+      <Header title="Join Live Queue" showBack />
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
+        {/* Service Header Card */}
         <Card style={styles.card}>
-          <Text style={styles.serviceTitle}>General OPD Consultation</Text>
-          <Text style={styles.branchName}>Apex Health Clinic - Main Branch</Text>
-          <Badge label="QUEUE OPEN" variant="success" style={styles.badge} />
+          <Text style={styles.serviceTitle}>{service.name}</Text>
+          <Text style={styles.branchName}>
+            {service.branchId?.name || 'Registered Branch'}
+          </Text>
+          <View style={styles.badgeRow}>
+            <Badge label="QUEUE IS OPEN TODAY" variant="success" />
+            <Badge label={`Prefix: ${service.prefix}`} variant="primary" />
+          </View>
 
           <View style={styles.statsGrid}>
             <View style={styles.statBox}>
-              <Text style={styles.statNumber}>3</Text>
+              <Text style={styles.statNumber}>{waitingCount}</Text>
               <Text style={styles.statLabel}>People Ahead</Text>
             </View>
 
             <View style={styles.statBox}>
-              <Text style={styles.statNumber}>~15m</Text>
-              <Text style={styles.statLabel}>Est. Wait Time</Text>
+              <Text style={styles.statNumber}>{currentToken}</Text>
+              <Text style={styles.statLabel}>Serving Token</Text>
+            </View>
+
+            <View style={styles.statBox}>
+              <Text style={styles.statNumber}>~{estWait}m</Text>
+              <Text style={styles.statLabel}>Est. Wait</Text>
             </View>
           </View>
         </Card>
 
         {/* Appointment For Switcher */}
-        <Text style={styles.sectionTitle}>Appointment For</Text>
+        <Text style={styles.sectionTitle}>Token Issued For</Text>
         <View style={styles.switchContainer}>
           <TouchableOpacity
             style={[
@@ -67,10 +164,7 @@ export default function ServiceDetailScreen() {
               styles.switchOption,
               forWhom === 'other' && styles.switchActive,
             ]}
-            onPress={() => {
-              setForWhom('other');
-              router.push('/contacts' as any);
-            }}
+            onPress={() => setForWhom('other')}
           >
             <Ionicons
               name="people"
@@ -83,14 +177,33 @@ export default function ServiceDetailScreen() {
                 forWhom === 'other' && styles.switchTextActive,
               ]}
             >
-              Someone Else
+              Family / Friend
             </Text>
           </TouchableOpacity>
         </View>
 
+        {forWhom === 'other' ? (
+          <Card style={styles.otherInputCard}>
+            <Input
+              label="Person Full Name *"
+              placeholder="e.g. John Doe"
+              value={personName}
+              onChangeText={setPersonName}
+            />
+            <Input
+              label="Phone Number"
+              placeholder="e.g. +91 98765 43210"
+              value={personPhone}
+              onChangeText={setPersonPhone}
+              keyboardType="phone-pad"
+            />
+          </Card>
+        ) : null}
+
         <Button
-          title="Confirm & Generate Token"
-          onPress={() => router.push('/token/t101' as any)}
+          title="Confirm & Generate Real Token"
+          loading={submitting}
+          onPress={handleBookToken}
           style={styles.confirmBtn}
         />
       </ScrollView>
@@ -103,14 +216,33 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Palette.background,
   },
+  centerContainer: {
+    flex: 1,
+    backgroundColor: Palette.background,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: Spacing.xl,
+  },
+  loadingText: {
+    color: Palette.mutedText,
+    marginTop: Spacing.sm,
+    fontSize: 14,
+  },
+  errorText: {
+    color: Palette.danger,
+    fontSize: 16,
+    fontWeight: '700',
+  },
   scrollContent: {
     padding: Spacing.md,
+    paddingBottom: Spacing.xxl,
   },
   card: {
     padding: Spacing.lg,
+    marginBottom: Spacing.md,
   },
   serviceTitle: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '800',
     color: Palette.text,
   },
@@ -118,31 +250,33 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Palette.mutedText,
     marginTop: 2,
+    marginBottom: Spacing.sm,
   },
-  badge: {
-    marginTop: Spacing.md,
+  badgeRow: {
+    flexDirection: 'row',
+    gap: Spacing.xs,
+    marginBottom: Spacing.md,
   },
   statsGrid: {
     flexDirection: 'row',
-    gap: Spacing.md,
-    marginTop: Spacing.lg,
-  },
-  statBox: {
-    flex: 1,
+    justifyContent: 'space-between',
     backgroundColor: Palette.surface,
     padding: Spacing.md,
     borderRadius: BorderRadius.md,
-    alignItems: 'center',
     borderWidth: 1,
     borderColor: Palette.border,
   },
+  statBox: {
+    alignItems: 'center',
+    flex: 1,
+  },
   statNumber: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: '800',
     color: Palette.primary,
   },
   statLabel: {
-    fontSize: 12,
+    fontSize: 11,
     color: Palette.mutedText,
     marginTop: 2,
   },
@@ -150,38 +284,43 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: Palette.text,
-    marginTop: Spacing.xl,
-    marginBottom: Spacing.sm,
+    marginVertical: Spacing.sm,
   },
   switchContainer: {
     flexDirection: 'row',
-    backgroundColor: Palette.surface,
+    backgroundColor: Palette.card,
     borderRadius: BorderRadius.md,
     padding: 4,
     borderWidth: 1,
     borderColor: Palette.border,
+    marginBottom: Spacing.md,
   },
   switchOption: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: Spacing.xs,
-    paddingVertical: Spacing.md,
+    paddingVertical: 10,
     borderRadius: BorderRadius.sm,
+    gap: 6,
   },
   switchActive: {
     backgroundColor: Palette.primary,
   },
   switchText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     color: Palette.mutedText,
   },
   switchTextActive: {
     color: '#0B0D0E',
+    fontWeight: '700',
+  },
+  otherInputCard: {
+    padding: Spacing.md,
+    marginBottom: Spacing.md,
   },
   confirmBtn: {
-    marginTop: Spacing.xl,
+    marginTop: Spacing.sm,
   },
 });
