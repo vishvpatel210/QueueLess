@@ -213,11 +213,11 @@ export default function ExploreScreen() {
         ) : branches.length === 0 ? (
           <Card style={styles.emptyCard}>
             <Ionicons name="location-outline" size={48} color={Palette.mutedText} />
-            <Text style={styles.emptyTitle}>No registered locations found</Text>
+            <Text style={styles.emptyTitle}>No QueueLess businesses nearby</Text>
             <Text style={styles.emptySubtitle}>
               {search || selectedCategory !== 'All'
-                ? 'Try adjusting your search query or selecting a different category.'
-                : 'No businesses have registered yet in this area. Shop owners can register branches to show on this radar.'}
+                ? 'No registered QueueLess businesses matched your filter or search query.'
+                : 'No businesses have registered on QueueLess in this area yet. Only businesses that have onboarded their branches appear on this live radar.'}
             </Text>
           </Card>
         ) : viewMode === 'map' ? (

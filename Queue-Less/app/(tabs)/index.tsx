@@ -228,17 +228,22 @@ export default function HomeScreen() {
             <View style={styles.emptyIconCircle}>
               <Ionicons name="storefront-outline" size={36} color={Palette.mutedText} />
             </View>
-            <Text style={styles.emptyTitle}>No businesses found nearby</Text>
+            <Text style={styles.emptyTitle}>No QueueLess businesses nearby</Text>
             <Text style={styles.emptySubtitle}>
               {search || selectedCategory !== 'All'
-                ? 'No registered places matched your filter or search query.'
-                : 'No businesses have registered in your area yet. Once a Shop Admin onboarded their business, it will appear here.'}
+                ? 'No registered QueueLess businesses matched your search or category filter.'
+                : 'QueueLess only displays real businesses that have actively registered on our platform. None are registered near your location yet.'}
             </Text>
             <Button
-              title="Refresh Location & Data"
+              title="Register Your Business on QueueLess"
+              onPress={() => router.push('/(auth)/register-admin' as any)}
+              style={styles.refreshBtn}
+            />
+            <Button
+              title="Refresh Location & Search"
               variant="outline"
               onPress={onRefresh}
-              style={styles.refreshBtn}
+              style={[styles.refreshBtn, { marginTop: Spacing.sm }]}
             />
           </Card>
         ) : (
