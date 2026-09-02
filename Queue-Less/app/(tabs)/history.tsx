@@ -17,7 +17,7 @@ import Header from '../../components/common/Header';
 import Card from '../../components/common/Card';
 import Badge from '../../components/common/Badge';
 import Button from '../../components/common/Button';
-import apiClient from '../../services/apiClient';
+import api from '../../services/api';
 
 interface HistoryToken {
   _id: string;
@@ -75,7 +75,7 @@ export default function HistoryScreen() {
 
   const fetchHistory = useCallback(async () => {
     try {
-      const res = await apiClient.get('/tokens/history');
+      const res = await api.get<any>('/tokens/history');
       setTokens(res.data?.data || []);
     } catch (e) {
       setTokens([]);
@@ -109,7 +109,7 @@ export default function HistoryScreen() {
     if (!reviewToken) return;
     try {
       setSubmittingReview(true);
-      await apiClient.post(`/tokens/${reviewToken._id}/review`, { rating, comment });
+      await api.post(`/tokens/${reviewToken._id}/review`, { rating, comment });
       setReviewModal(false);
       Alert.alert('Thank You!', 'Your review has been submitted successfully.');
       // Update local state

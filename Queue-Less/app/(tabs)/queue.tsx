@@ -19,7 +19,7 @@ import Card from '../../components/common/Card';
 import Badge from '../../components/common/Badge';
 import Button from '../../components/common/Button';
 import { useSocket } from '../../context/SocketContext';
-import apiClient from '../../services/apiClient';
+import api from '../../services/api';
 
 interface TokenData {
   _id: string;
@@ -69,7 +69,7 @@ export default function QueueTabScreen() {
 
   const fetchActiveToken = useCallback(async () => {
     try {
-      const res = await apiClient.get('/tokens/active');
+      const res = await api.get<any>('/tokens/active');
       const tokens = res.data?.data || [];
       setToken(tokens.length > 0 ? tokens[0] : null);
     } catch (e) {
@@ -125,7 +125,7 @@ export default function QueueTabScreen() {
           onPress: async () => {
             try {
               setCancelling(true);
-              await apiClient.post(`/tokens/${token._id}/cancel`);
+              await api.post(`/tokens/${token._id}/cancel`);
               setToken(null);
             } catch (e: any) {
               Alert.alert('Error', e.response?.data?.message || 'Failed to cancel token.');

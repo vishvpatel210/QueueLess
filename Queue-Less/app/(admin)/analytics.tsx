@@ -13,7 +13,7 @@ import { Spacing, BorderRadius } from '../../constants/theme';
 import Header from '../../components/common/Header';
 import Card from '../../components/common/Card';
 import businessService from '../../services/businessService';
-import apiClient from '../../services/apiClient';
+import api from '../../services/api';
 
 interface AnalyticsData {
   summary: {
@@ -69,7 +69,7 @@ export default function AdminAnalyticsScreen() {
 
   const fetchAnalytics = async (bid: string, d: number) => {
     try {
-      const res = await apiClient.get(`/analytics/branch/${bid}?days=${d}`);
+      const res = await api.get<any>(`/analytics/branch/${bid}?days=${d}`);
       setAnalytics(res.data?.data || null);
     } catch (e) {
       setAnalytics(null);
