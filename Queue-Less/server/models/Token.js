@@ -40,6 +40,9 @@ const TokenSchema = new mongoose.Schema(
       type: String,
       default: '',
     },
+    displayToken: {
+      type: String,
+    },
     status: {
       type: String,
       enum: [
@@ -65,8 +68,11 @@ const TokenSchema = new mongoose.Schema(
     },
     joinedAt: { type: Date, default: Date.now },
     calledAt: { type: Date },
+    startedAt: { type: Date },
     completedAt: { type: Date },
     cancelledAt: { type: Date },
+    skippedAt: { type: Date },
+    noShowAt: { type: Date },
   },
   {
     timestamps: true,

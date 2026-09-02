@@ -1,14 +1,19 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState } from 'react';
 import authService from '../services/authService';
-import { User, LoginCredentials, RegisterData } from '../types/user';
-import { setAuthHeader } from '../services/api';
+import {
+  User,
+  LoginCredentials,
+  CustomerRegisterData,
+  ShopAdminRegisterData,
+} from '../types/user';
 
 interface AuthContextType {
   user: User | null;
   token: string | null;
   isLoading: boolean;
-  login: (credentials: LoginCredentials) => Promise<void>;
-  register: (data: RegisterData) => Promise<void>;
+  login: (credentials: LoginCredentials) => Promise<User>;
+  registerCustomer: (data: CustomerRegisterData) => Promise<User>;
+  registerShopAdmin: (data: ShopAdminRegisterData) => Promise<User>;
   logout: () => void;
 }
 
@@ -16,8 +21,9 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   token: null,
   isLoading: false,
-  login: async () => {},
-  register: async () => {},
+  login: async () => ({} as User),
+  registerCustomer: async () => ({} as User),
+  registerShopAdmin: async () => ({} as User),
   logout: () => {},
 });
 
@@ -26,23 +32,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  const login = async (credentials: LoginCredentials) => {
+  const login = async (credentials: LoginCredentials): Promise<User> => {
     setIsLoading(true);
     try {
       const response = await authService.login(credentials);
       setToken(response.token);
       setUser(response.user);
+      return response.user;
     } finally {
       setIsLoading(false);
     }
   };
 
-  const register = async (data: RegisterData) => {
+  const registerCustomer = async (data: CustomerRegisterData): Promise<User> => {
     setIsLoading(true);
     try {
-      const response = await authService.register(data);
+      const response = await authService.registerCustomer(data);
       setToken(response.token);
       setUser(response.user);
+      return response.user;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const registerShopAdmin = async (data: ShopAdminRegisterData): Promise<User> => {
+    setIsLoading(true);
+    try {
+      const response = await authService.registerShopAdmin(data);
+      setToken(response.token);
+      setUser(response.user);
+      return response.user;
     } finally {
       setIsLoading(false);
     }
@@ -61,7 +81,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         token,
         isLoading,
         login,
-        register,
+        registerCustomer,
+        registerShopAdmin,
         logout,
       }}
     >

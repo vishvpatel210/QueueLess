@@ -19,6 +19,16 @@ export const queueService = {
     return response.data.data;
   },
 
+  async getMyActiveTokens(): Promise<TokenItem[]> {
+    const response = await api.get<{ success: boolean; data: TokenItem[] }>('/tokens/active');
+    return response.data.data || [];
+  },
+
+  async getMyTokenHistory(): Promise<TokenItem[]> {
+    const response = await api.get<{ success: boolean; data: TokenItem[] }>('/tokens/history');
+    return response.data.data || [];
+  },
+
   async getTokenById(tokenId: string): Promise<TokenItem> {
     const response = await api.get<{ success: boolean; data: TokenItem }>(`/tokens/${tokenId}`);
     return response.data.data;
@@ -29,12 +39,24 @@ export const queueService = {
     return response.data.data;
   },
 
+  async submitReview(tokenId: string, rating: number, comment?: string): Promise<any> {
+    const response = await api.post<{ success: boolean; data: any }>(`/tokens/${tokenId}/review`, {
+      rating,
+      comment,
+    });
+    return response.data.data;
+  },
+
   async getQueueTokens(queueId: string): Promise<{
     queue: QueueItem;
     waitingTokens: TokenItem[];
     servingToken: TokenItem | null;
+    calledToken?: TokenItem | null;
+    inProgressToken?: TokenItem | null;
     completedCount: number;
     skippedCount: number;
+    cancelledCount: number;
+    noShowCount: number;
     allTokens: TokenItem[];
   }> {
     const response = await api.get<{
@@ -43,8 +65,12 @@ export const queueService = {
         queue: QueueItem;
         waitingTokens: TokenItem[];
         servingToken: TokenItem | null;
+        calledToken?: TokenItem | null;
+        inProgressToken?: TokenItem | null;
         completedCount: number;
         skippedCount: number;
+        cancelledCount: number;
+        noShowCount: number;
         allTokens: TokenItem[];
       };
     }>(`/queues/${queueId}/tokens`);
@@ -53,6 +79,16 @@ export const queueService = {
 
   async callNext(queueId: string): Promise<any> {
     const response = await api.post<{ success: boolean; data: any }>(`/queues/${queueId}/next`);
+    return response.data.data;
+  },
+
+  async startService(tokenId: string): Promise<TokenItem> {
+    const response = await api.post<{ success: boolean; data: TokenItem }>(`/tokens/${tokenId}/start`);
+    return response.data.data;
+  },
+
+  async noShowToken(tokenId: string): Promise<TokenItem> {
+    const response = await api.post<{ success: boolean; data: TokenItem }>(`/tokens/${tokenId}/no-show`);
     return response.data.data;
   },
 

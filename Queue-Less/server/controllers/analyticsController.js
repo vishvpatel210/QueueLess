@@ -1,213 +1,236 @@
 const Token = require('../models/Token');
 const Queue = require('../models/Queue');
 const Branch = require('../models/Branch');
-const asyncHandler = require('../middleware/asyncHandler');
+const Business = require('../models/Business');
 
 // Helper: milliseconds to minutes
 const msToMin = (ms) => Math.round(ms / 60000);
 
-/**
- * @desc  Get analytics for a specific queue
- * @route GET /api/analytics/queue/:queueId
- * @access Private (Admin)
- */
-const getQueueAnalytics = asyncHandler(async (req, res) => {
-  const { queueId } = req.params;
-  const { date } = req.query; // e.g. 2024-01-15
+// @desc    Get today's analytics for a branch
+// @route   GET /api/analytics/branch/:branchId
+// @access  Protected (SHOP_ADMIN)
+const getBranchAnalytics = async (req, res, next) => {
+  try {
+    const { branchId } = req.params;
+    const { days = 1 } = req.query;
 
-  const startOfDay = date ? new Date(date) : new Date();
-  startOfDay.setHours(0, 0, 0, 0);
-  const endOfDay = new Date(startOfDay);
-  endOfDay.setHours(23, 59, 59, 999);
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - parseInt(days));
+    startDate.setHours(0, 0, 0, 0);
 
-  const tokens = await Token.find({
-    queue: queueId,
-    createdAt: { $gte: startOfDay, $lte: endOfDay },
-  });
+    // All queues for this branch
+    const queues = await Queue.find({ branchId });
+    const queueIds = queues.map((q) => q._id);
 
-  const total = tokens.length;
-  const completed = tokens.filter((t) => t.status === 'COMPLETED');
-  const skipped = tokens.filter((t) => t.status === 'SKIPPED');
-  const waiting = tokens.filter((t) => t.status === 'WAITING');
-  const cancelled = tokens.filter((t) => t.status === 'CANCELLED');
+    const tokens = await Token.find({
+      queueId: { $in: queueIds },
+      joinedAt: { $gte: startDate },
+    }).populate('serviceId', 'name estimatedDurationMinutes');
 
-  // Average wait time (issuedAt -> calledAt)
-  const waitTimes = completed
-    .filter((t) => t.issuedAt && t.calledAt)
-    .map((t) => t.calledAt - t.issuedAt);
+    const total = tokens.length;
+    const completed = tokens.filter((t) => t.status === 'COMPLETED');
+    const waiting = tokens.filter((t) => t.status === 'WAITING');
+    const called = tokens.filter((t) => t.status === 'CALLED');
+    const inProgress = tokens.filter((t) => t.status === 'IN_PROGRESS');
+    const skipped = tokens.filter((t) => t.status === 'SKIPPED');
+    const noShow = tokens.filter((t) => t.status === 'NO_SHOW');
+    const cancelled = tokens.filter((t) => t.status === 'CANCELLED');
 
-  const avgWaitTime =
-    waitTimes.length > 0
-      ? msToMin(waitTimes.reduce((a, b) => a + b, 0) / waitTimes.length)
-      : 0;
+    // Average wait time (joinedAt → calledAt)
+    const waitTimes = completed
+      .filter((t) => t.joinedAt && t.calledAt)
+      .map((t) => t.calledAt - t.joinedAt);
+    const avgWaitTime =
+      waitTimes.length > 0
+        ? msToMin(waitTimes.reduce((a, b) => a + b, 0) / waitTimes.length)
+        : 0;
 
-  // Average service time (calledAt -> completedAt)
-  const serviceTimes = completed
-    .filter((t) => t.calledAt && t.completedAt)
-    .map((t) => t.completedAt - t.calledAt);
+    // Average service time (startedAt → completedAt)
+    const serviceTimes = completed
+      .filter((t) => t.startedAt && t.completedAt)
+      .map((t) => t.completedAt - t.startedAt);
+    const avgServiceTime =
+      serviceTimes.length > 0
+        ? msToMin(serviceTimes.reduce((a, b) => a + b, 0) / serviceTimes.length)
+        : 0;
 
-  const avgServiceTime =
-    serviceTimes.length > 0
-      ? msToMin(serviceTimes.reduce((a, b) => a + b, 0) / serviceTimes.length)
-      : 0;
+    // Hourly distribution based on joinedAt
+    const hourlyDistribution = Array(24).fill(0);
+    tokens.forEach((t) => {
+      if (t.joinedAt) {
+        const hour = new Date(t.joinedAt).getHours();
+        hourlyDistribution[hour]++;
+      }
+    });
 
-  const completionRate = total > 0 ? Math.round((completed.length / total) * 100) : 0;
-  const skipRate = total > 0 ? Math.round((skipped.length / total) * 100) : 0;
+    // Peak hour
+    const maxCount = Math.max(...hourlyDistribution);
+    const peakHour = maxCount > 0 ? hourlyDistribution.indexOf(maxCount) : -1;
 
-  // Hourly distribution (0-23)
-  const hourlyDistribution = Array(24).fill(0);
-  tokens.forEach((t) => {
-    if (t.issuedAt) {
-      const hour = new Date(t.issuedAt).getHours();
-      hourlyDistribution[hour]++;
-    }
-  });
+    // Service-wise demand
+    const serviceMap = {};
+    tokens.forEach((t) => {
+      const key = t.serviceId?.name || 'Unknown Service';
+      if (!serviceMap[key]) serviceMap[key] = { name: key, count: 0, completed: 0 };
+      serviceMap[key].count++;
+      if (t.status === 'COMPLETED') serviceMap[key].completed++;
+    });
+    const serviceBreakdown = Object.values(serviceMap).sort((a, b) => b.count - a.count);
 
-  // Peak hour
-  const peakHour = hourlyDistribution.indexOf(Math.max(...hourlyDistribution));
-
-  res.json({
-    date: startOfDay.toISOString().split('T')[0],
-    summary: {
-      total,
-      completed: completed.length,
-      skipped: skipped.length,
-      waiting: waiting.length,
-      cancelled: cancelled.length,
-      completionRate,
-      skipRate,
-      avgWaitTime,
-      avgServiceTime,
-      peakHour: `${peakHour}:00 - ${peakHour + 1}:00`,
-    },
-    hourlyDistribution,
-  });
-});
-
-/**
- * @desc  Get analytics for a specific branch (across all queues)
- * @route GET /api/analytics/branch/:branchId
- * @access Private (Admin)
- */
-const getBranchAnalytics = asyncHandler(async (req, res) => {
-  const { branchId } = req.params;
-  const { days = 7 } = req.query;
-
-  const startDate = new Date();
-  startDate.setDate(startDate.getDate() - parseInt(days));
-  startDate.setHours(0, 0, 0, 0);
-
-  const queues = await Queue.find({ branch: branchId });
-  const queueIds = queues.map((q) => q._id);
-
-  const tokens = await Token.find({
-    queue: { $in: queueIds },
-    createdAt: { $gte: startDate },
-  });
-
-  const total = tokens.length;
-  const completed = tokens.filter((t) => t.status === 'COMPLETED');
-  const skipped = tokens.filter((t) => t.status === 'SKIPPED');
-
-  const completionRate = total > 0 ? Math.round((completed.length / total) * 100) : 0;
-  const skipRate = total > 0 ? Math.round((skipped.length / total) * 100) : 0;
-
-  // Daily breakdown
-  const dailyMap = {};
-  tokens.forEach((t) => {
-    const day = new Date(t.createdAt).toISOString().split('T')[0];
-    if (!dailyMap[day]) dailyMap[day] = { total: 0, completed: 0, skipped: 0 };
-    dailyMap[day].total++;
-    if (t.status === 'COMPLETED') dailyMap[day].completed++;
-    if (t.status === 'SKIPPED') dailyMap[day].skipped++;
-  });
-
-  const dailyStats = Object.entries(dailyMap)
-    .sort(([a], [b]) => (a > b ? 1 : -1))
-    .map(([date, stats]) => ({ date, ...stats }));
-
-  // Wait time averages
-  const waitTimes = completed
-    .filter((t) => t.issuedAt && t.calledAt)
-    .map((t) => t.calledAt - t.issuedAt);
-
-  const avgWaitTime =
-    waitTimes.length > 0
-      ? msToMin(waitTimes.reduce((a, b) => a + b, 0) / waitTimes.length)
-      : 0;
-
-  res.json({
-    period: `Last ${days} days`,
-    summary: {
-      total,
-      completed: completed.length,
-      skipped: skipped.length,
-      completionRate,
-      skipRate,
-      avgWaitTime,
-      activeQueues: queues.length,
-    },
-    dailyStats,
-  });
-});
-
-/**
- * @desc  Get leaderboard / top performing branches for a business
- * @route GET /api/analytics/business/:businessId/leaderboard
- * @access Private (Admin)
- */
-const getBusinessLeaderboard = asyncHandler(async (req, res) => {
-  const { businessId } = req.params;
-  const { days = 30 } = req.query;
-
-  const startDate = new Date();
-  startDate.setDate(startDate.getDate() - parseInt(days));
-
-  const branches = await Branch.find({ business: businessId });
-
-  const leaderboard = await Promise.all(
-    branches.map(async (branch) => {
-      const queues = await Queue.find({ branch: branch._id });
-      const queueIds = queues.map((q) => q._id);
-
-      const tokens = await Token.find({
-        queue: { $in: queueIds },
-        createdAt: { $gte: startDate },
+    if (total === 0) {
+      return res.status(200).json({
+        success: true,
+        data: null,
+        message: 'No analytics data available yet.',
       });
+    }
 
-      const completed = tokens.filter((t) => t.status === 'COMPLETED');
-      const completionRate =
-        tokens.length > 0 ? Math.round((completed.length / tokens.length) * 100) : 0;
+    res.status(200).json({
+      success: true,
+      data: {
+        period: days === 1 ? 'Today' : `Last ${days} days`,
+        summary: {
+          total,
+          waiting: waiting.length + called.length + inProgress.length,
+          completed: completed.length,
+          cancelled: cancelled.length,
+          skipped: skipped.length,
+          noShow: noShow.length,
+          avgWaitTime,
+          avgServiceTime,
+          completionRate: total > 0 ? Math.round((completed.length / total) * 100) : 0,
+        },
+        peakHour: peakHour >= 0 ? `${peakHour}:00 – ${peakHour + 1}:00` : 'N/A',
+        hourlyDistribution,
+        serviceBreakdown,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
 
-      const waitTimes = completed
-        .filter((t) => t.issuedAt && t.calledAt)
-        .map((t) => t.calledAt - t.issuedAt);
+// @desc    Get analytics for a specific queue
+// @route   GET /api/analytics/queue/:queueId
+// @access  Protected (SHOP_ADMIN)
+const getQueueAnalytics = async (req, res, next) => {
+  try {
+    const { queueId } = req.params;
 
-      const avgWaitTime =
-        waitTimes.length > 0
-          ? msToMin(waitTimes.reduce((a, b) => a + b, 0) / waitTimes.length)
-          : 0;
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date();
+    endOfDay.setHours(23, 59, 59, 999);
 
-      return {
-        branchId: branch._id,
-        branchName: branch.name,
-        totalTokens: tokens.length,
-        completedTokens: completed.length,
-        completionRate,
+    const tokens = await Token.find({
+      queueId,
+      joinedAt: { $gte: startOfDay, $lte: endOfDay },
+    });
+
+    const total = tokens.length;
+    const completed = tokens.filter((t) => t.status === 'COMPLETED');
+    const waiting = tokens.filter((t) => t.status === 'WAITING');
+    const skipped = tokens.filter((t) => t.status === 'SKIPPED');
+    const noShow = tokens.filter((t) => t.status === 'NO_SHOW');
+    const cancelled = tokens.filter((t) => t.status === 'CANCELLED');
+
+    const waitTimes = completed
+      .filter((t) => t.joinedAt && t.calledAt)
+      .map((t) => t.calledAt - t.joinedAt);
+    const avgWaitTime =
+      waitTimes.length > 0
+        ? msToMin(waitTimes.reduce((a, b) => a + b, 0) / waitTimes.length)
+        : 0;
+
+    const serviceTimes = completed
+      .filter((t) => t.startedAt && t.completedAt)
+      .map((t) => t.completedAt - t.startedAt);
+    const avgServiceTime =
+      serviceTimes.length > 0
+        ? msToMin(serviceTimes.reduce((a, b) => a + b, 0) / serviceTimes.length)
+        : 0;
+
+    if (total === 0) {
+      return res.status(200).json({
+        success: true,
+        data: null,
+        message: 'No analytics data available yet.',
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: {
+        total,
+        completed: completed.length,
+        waiting: waiting.length,
+        skipped: skipped.length,
+        noShow: noShow.length,
+        cancelled: cancelled.length,
         avgWaitTime,
-        score: completionRate - avgWaitTime * 0.5, // composite performance score
-      };
-    })
-  );
+        avgServiceTime,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
 
-  leaderboard.sort((a, b) => b.score - a.score);
+// @desc    Get business-wide leaderboard
+// @route   GET /api/analytics/business/:businessId/leaderboard
+// @access  Protected (SHOP_ADMIN)
+const getBusinessLeaderboard = async (req, res, next) => {
+  try {
+    const { businessId } = req.params;
+    const { days = 30 } = req.query;
 
-  res.json({
-    businessId,
-    period: `Last ${days} days`,
-    leaderboard,
-  });
-});
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - parseInt(days));
+
+    const branches = await Branch.find({ businessId });
+    const leaderboard = await Promise.all(
+      branches.map(async (branch) => {
+        const queues = await Queue.find({ branchId: branch._id });
+        const queueIds = queues.map((q) => q._id);
+
+        const tokens = await Token.find({
+          queueId: { $in: queueIds },
+          joinedAt: { $gte: startDate },
+        });
+
+        const completed = tokens.filter((t) => t.status === 'COMPLETED');
+        const completionRate =
+          tokens.length > 0 ? Math.round((completed.length / tokens.length) * 100) : 0;
+
+        const waitTimes = completed
+          .filter((t) => t.joinedAt && t.calledAt)
+          .map((t) => t.calledAt - t.joinedAt);
+        const avgWaitTime =
+          waitTimes.length > 0
+            ? msToMin(waitTimes.reduce((a, b) => a + b, 0) / waitTimes.length)
+            : 0;
+
+        return {
+          branchId: branch._id,
+          branchName: branch.name,
+          totalTokens: tokens.length,
+          completedTokens: completed.length,
+          completionRate,
+          avgWaitTime,
+        };
+      })
+    );
+
+    leaderboard.sort((a, b) => b.completedTokens - a.completedTokens);
+
+    res.status(200).json({
+      success: true,
+      data: { period: `Last ${days} days`, leaderboard },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
 
 module.exports = {
   getQueueAnalytics,

@@ -58,9 +58,16 @@ const emitTokenCalled = (userId, tokenPayload) => {
   }
 };
 
+const emitTokenUpdated = (userId, tokenPayload) => {
+  if (io) {
+    io.to(`user:${userId}`).emit('token:updated', tokenPayload);
+  }
+};
+
 module.exports = {
   initSocket,
   getIO,
   emitQueueUpdate,
   emitTokenCalled,
+  emitTokenUpdated,
 };

@@ -1,9 +1,23 @@
 import api, { setAuthHeader } from './api';
-import { User, LoginCredentials, RegisterData, AuthResponse } from '../types/user';
+import {
+  User,
+  LoginCredentials,
+  CustomerRegisterData,
+  ShopAdminRegisterData,
+  AuthResponse,
+} from '../types/user';
 
 export const authService = {
-  async register(data: RegisterData): Promise<AuthResponse> {
+  async registerCustomer(data: CustomerRegisterData): Promise<AuthResponse> {
     const response = await api.post<AuthResponse>('/auth/register', data);
+    if (response.data.token) {
+      setAuthHeader(response.data.token);
+    }
+    return response.data;
+  },
+
+  async registerShopAdmin(data: ShopAdminRegisterData): Promise<AuthResponse> {
+    const response = await api.post<AuthResponse>('/auth/register-admin', data);
     if (response.data.token) {
       setAuthHeader(response.data.token);
     }

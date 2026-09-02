@@ -1,47 +1,29 @@
 const Queue = require('../models/Queue');
 const Token = require('../models/Token');
-const { emitQueueUpdate, emitTokenCalled } = require('./socketService');
+const Notification = require('../models/Notification');
+const { emitQueueUpdate, emitTokenCalled, emitTokenUpdated } = require('./socketService');
 
 const queueStateMachine = {
   /**
    * Admin calls the next waiting customer.
-   * 1. Validates queue is OPEN.
-   * 2. Marks any active CALLED/IN_PROGRESS token as COMPLETED.
-   * 3. Finds next WAITING token by sequenceNumber.
-   * 4. Updates next token to CALLED.
-   * 5. Updates queue currentTokenNumber & currentTokenId.
-   * 6. Emits Socket.IO live updates to room queue:id and user:id.
+   * Finds next WAITING token by sequenceNumber.
+   * Marks it CALLED, updates queue state, emits Socket.IO events.
+   * Does NOT auto-complete any current token — admin must do that manually.
    */
   async callNextCustomer(queueId) {
     const queue = await Queue.findById(queueId);
     if (!queue) throw new Error('Queue not found');
-    if (queue.status !== 'OPEN') throw new Error(`Queue is currently ${queue.status}`);
-
-    // Complete any currently active token
-    if (queue.currentTokenId) {
-      await Token.findByIdAndUpdate(queue.currentTokenId, {
-        status: 'COMPLETED',
-        completedAt: new Date(),
-      });
-    }
+    if (queue.status !== 'OPEN') throw new Error(`Queue is currently ${queue.status}. Cannot call next.`);
 
     // Find next WAITING token
     const nextToken = await Token.findOne({
       queueId,
       status: 'WAITING',
-    }).sort({ sequenceNumber: 1 });
+    })
+      .sort({ sequenceNumber: 1 })
+      .populate('userId', 'name');
 
     if (!nextToken) {
-      queue.currentTokenNumber = null;
-      queue.currentTokenId = null;
-      await queue.save();
-
-      emitQueueUpdate(queueId, {
-        queueId,
-        currentTokenNumber: null,
-        status: queue.status,
-      });
-
       return { queue, nextToken: null, message: 'No waiting customers in queue.' };
     }
 
@@ -53,49 +35,163 @@ const queueStateMachine = {
     queue.currentTokenId = nextToken._id;
     await queue.save();
 
-    // Broadcast Socket.IO Events
+    // Broadcast queue-wide update
     emitQueueUpdate(queueId, {
       queueId,
       currentTokenNumber: nextToken.tokenNumber,
-      currentTokenId: nextToken._id,
+      currentTokenId: nextToken._id.toString(),
       status: queue.status,
+      action: 'CALLED',
     });
 
-    emitTokenCalled(nextToken.userId.toString(), {
+    // Notify the specific customer
+    emitTokenCalled(nextToken.userId._id.toString(), {
       tokenId: nextToken._id,
       tokenNumber: nextToken.tokenNumber,
+      displayToken: nextToken.displayToken || nextToken.tokenNumber,
       status: 'CALLED',
+    });
+
+    // Save notification record
+    await Notification.create({
+      userId: nextToken.userId._id,
+      tokenId: nextToken._id,
+      type: 'TOKEN_CALLED',
+      title: '🔔 Your Turn!',
+      message: `Token ${nextToken.displayToken || nextToken.tokenNumber} — please proceed to the counter now.`,
     });
 
     return { queue, nextToken };
   },
 
-  async skipCustomer(tokenId) {
+  /**
+   * Admin starts service: CALLED → IN_PROGRESS
+   */
+  async startService(tokenId) {
     const token = await Token.findById(tokenId);
     if (!token) throw new Error('Token not found');
+    if (token.status !== 'CALLED') {
+      throw new Error(`Cannot start service. Token is ${token.status}, expected CALLED.`);
+    }
 
-    token.status = 'SKIPPED';
+    token.status = 'IN_PROGRESS';
+    token.startedAt = new Date();
     await token.save();
 
     emitQueueUpdate(token.queueId.toString(), {
       queueId: token.queueId.toString(),
-      skippedTokenId: tokenId,
+      tokenId: tokenId,
+      action: 'IN_PROGRESS',
+    });
+
+    emitTokenUpdated(token.userId.toString(), {
+      tokenId: token._id,
+      status: 'IN_PROGRESS',
     });
 
     return token;
   },
 
+  /**
+   * Admin manually marks a customer as completed: IN_PROGRESS/CALLED → COMPLETED
+   * The Shop Admin MUST tap Mark Completed. Do NOT auto-complete based on time.
+   */
   async completeCustomer(tokenId) {
     const token = await Token.findById(tokenId);
     if (!token) throw new Error('Token not found');
+
+    if (!['IN_PROGRESS', 'CALLED'].includes(token.status)) {
+      throw new Error(`Cannot complete. Token is currently ${token.status}.`);
+    }
 
     token.status = 'COMPLETED';
     token.completedAt = new Date();
     await token.save();
 
+    // Clear queue's currentTokenId if this was the serving token
+    await Queue.findOneAndUpdate(
+      { currentTokenId: token._id },
+      { $set: { currentTokenId: null, currentTokenNumber: null } }
+    );
+
     emitQueueUpdate(token.queueId.toString(), {
       queueId: token.queueId.toString(),
-      completedTokenId: tokenId,
+      tokenId: tokenId,
+      action: 'COMPLETED',
+    });
+
+    emitTokenUpdated(token.userId.toString(), {
+      tokenId: token._id,
+      status: 'COMPLETED',
+    });
+
+    await Notification.create({
+      userId: token.userId,
+      tokenId: token._id,
+      type: 'TOKEN_COMPLETED',
+      title: '✓ Visit Completed',
+      message: `Your visit is complete. Token ${token.displayToken || token.tokenNumber} — thank you!`,
+    });
+
+    return token;
+  },
+
+  /**
+   * Admin skips a customer: WAITING/CALLED → SKIPPED
+   * Token is kept in DB for history and analytics.
+   */
+  async skipCustomer(tokenId) {
+    const token = await Token.findById(tokenId);
+    if (!token) throw new Error('Token not found');
+
+    if (!['WAITING', 'CALLED'].includes(token.status)) {
+      throw new Error(`Cannot skip. Token is ${token.status}.`);
+    }
+
+    token.status = 'SKIPPED';
+    token.skippedAt = new Date();
+    await token.save();
+
+    emitQueueUpdate(token.queueId.toString(), {
+      queueId: token.queueId.toString(),
+      tokenId: tokenId,
+      action: 'SKIPPED',
+    });
+
+    emitTokenUpdated(token.userId.toString(), {
+      tokenId: token._id,
+      status: 'SKIPPED',
+    });
+
+    return token;
+  },
+
+  /**
+   * Admin marks a called customer as no-show: CALLED → NO_SHOW
+   * Token kept for history and analytics.
+   */
+  async noShowCustomer(tokenId) {
+    const token = await Token.findById(tokenId);
+    if (!token) throw new Error('Token not found');
+
+    if (token.status !== 'CALLED') {
+      throw new Error(`Cannot mark no-show. Token is ${token.status}, expected CALLED.`);
+    }
+
+    token.status = 'NO_SHOW';
+    token.noShowAt = new Date();
+    await token.save();
+
+    // Clear from queue current
+    await Queue.findOneAndUpdate(
+      { currentTokenId: token._id },
+      { $set: { currentTokenId: null, currentTokenNumber: null } }
+    );
+
+    emitQueueUpdate(token.queueId.toString(), {
+      queueId: token.queueId.toString(),
+      tokenId: tokenId,
+      action: 'NO_SHOW',
     });
 
     return token;
@@ -108,8 +204,7 @@ const queueStateMachine = {
       { new: true }
     );
     if (!queue) throw new Error('Queue not found');
-
-    emitQueueUpdate(queueId, { queueId, status: 'PAUSED' });
+    emitQueueUpdate(queueId, { queueId, status: 'PAUSED', action: 'PAUSED' });
     return queue;
   },
 
@@ -120,8 +215,7 @@ const queueStateMachine = {
       { new: true }
     );
     if (!queue) throw new Error('Queue not found');
-
-    emitQueueUpdate(queueId, { queueId, status: 'OPEN' });
+    emitQueueUpdate(queueId, { queueId, status: 'OPEN', action: 'RESUMED' });
     return queue;
   },
 
@@ -132,8 +226,7 @@ const queueStateMachine = {
       { new: true }
     );
     if (!queue) throw new Error('Queue not found');
-
-    emitQueueUpdate(queueId, { queueId, status: 'CLOSED' });
+    emitQueueUpdate(queueId, { queueId, status: 'CLOSED', action: 'CLOSED' });
     return queue;
   },
 };
