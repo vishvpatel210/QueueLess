@@ -7,7 +7,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../context/AuthContext';
@@ -34,8 +33,15 @@ export default function LoginScreen() {
     }
     setErrorMessage('');
     try {
-      await login({ email: cleanEmail, password: cleanPassword });
-      router.replace('/(tabs)');
+      const loggedUser = await login({ email: cleanEmail, password: cleanPassword });
+      
+      // Role-Based Redirection
+      const userRole = (loggedUser.role || '').toUpperCase();
+      if (userRole === 'SHOP_ADMIN' || userRole === 'ADMIN') {
+        router.replace('/(admin)/dashboard' as any);
+      } else {
+        router.replace('/(tabs)');
+      }
     } catch (err: any) {
       const msg =
         err.response?.data?.message ||
@@ -117,7 +123,7 @@ export default function LoginScreen() {
 
           <TouchableOpacity
             style={styles.forgotButton}
-            onPress={() => router.push('/(auth)/forgot-password')}
+            onPress={() => router.push('/(auth)/forgot-password' as any)}
           >
             <Text style={styles.forgotText}>Forgot Password?</Text>
           </TouchableOpacity>
@@ -132,9 +138,16 @@ export default function LoginScreen() {
           <View style={styles.footerRow}>
             <Text style={styles.footerText}>Don't have an account? </Text>
             <TouchableOpacity onPress={() => router.push('/(auth)/register')}>
-              <Text style={styles.linkText}>Create Account</Text>
+              <Text style={styles.linkText}>Customer Register</Text>
             </TouchableOpacity>
           </View>
+
+          <TouchableOpacity
+            style={styles.adminRegisterLink}
+            onPress={() => router.push('/(auth)/register-admin' as any)}
+          >
+            <Text style={styles.adminRegisterText}>Register as Shop / Hospital Admin →</Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -254,6 +267,18 @@ const styles = StyleSheet.create({
   linkText: {
     color: Palette.primary,
     fontSize: 14,
+    fontWeight: '700',
+  },
+  adminRegisterLink: {
+    marginTop: Spacing.md,
+    alignItems: 'center',
+    paddingTop: Spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: Palette.border,
+  },
+  adminRegisterText: {
+    color: Palette.secondary,
+    fontSize: 13,
     fontWeight: '700',
   },
 });

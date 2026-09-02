@@ -10,21 +10,22 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../context/AuthContext';
-import { UserRole } from '../../types/user';
 import { Palette } from '../../constants/Colors';
 import { Spacing, BorderRadius } from '../../constants/theme';
 import Input from '../../components/common/Input';
 import Button from '../../components/common/Button';
 
-export default function RegisterScreen() {
+const EMAIL_REGEX = /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/;
+
+export default function CustomerRegisterScreen() {
   const router = useRouter();
-  const { register, isLoading } = useAuth();
+  const { registerCustomer, isLoading } = useAuth();
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState<UserRole>('customer');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
 
   const handleRegister = async () => {
@@ -32,24 +33,46 @@ export default function RegisterScreen() {
     const cleanEmail = email.trim().toLowerCase();
     const cleanPhone = phone.trim();
     const cleanPassword = password.trim();
+    const cleanConfirm = confirmPassword.trim();
 
-    if (!cleanName || !cleanEmail || !cleanPassword) {
-      setErrorMessage('Please fill in Name, Email, and Password.');
+    if (!cleanName) {
+      setErrorMessage('Full Name is required.');
       return;
     }
+
+    if (!cleanEmail) {
+      setErrorMessage('Please enter your email address.');
+      return;
+    }
+
+    if (!EMAIL_REGEX.test(cleanEmail)) {
+      setErrorMessage('Please enter a valid email address.');
+      return;
+    }
+
+    if (!cleanPassword) {
+      setErrorMessage('Password is required.');
+      return;
+    }
+
     if (cleanPassword.length < 6) {
       setErrorMessage('Password must be at least 6 characters long.');
       return;
     }
 
+    if (cleanPassword !== cleanConfirm) {
+      setErrorMessage('Passwords do not match.');
+      return;
+    }
+
     setErrorMessage('');
     try {
-      await register({
+      await registerCustomer({
         name: cleanName,
         email: cleanEmail,
         phone: cleanPhone,
         password: cleanPassword,
-        role,
+        confirmPassword: cleanConfirm,
       });
       router.replace('/(tabs)');
     } catch (err: any) {
@@ -72,56 +95,18 @@ export default function RegisterScreen() {
       >
         <View style={styles.headerContainer}>
           <Text style={styles.brandTitle}>QueueLess</Text>
-          <Text style={styles.brandTagline}>Create your digital pass account</Text>
+          <Text style={styles.brandTagline}>Create Customer Pass Account</Text>
         </View>
 
         <View style={styles.formCard}>
-          <Text style={styles.formTitle}>Register</Text>
-          <Text style={styles.formSubtitle}>Join thousands skipping the wait</Text>
+          <Text style={styles.formTitle}>Customer Sign Up</Text>
+          <Text style={styles.formSubtitle}>Skip physical queues at clinics, salons & banks</Text>
 
           {errorMessage ? (
             <View style={styles.errorBanner}>
               <Text style={styles.errorText}>{errorMessage}</Text>
             </View>
           ) : null}
-
-          {/* Role Switcher */}
-          <Text style={styles.roleLabel}>Account Type</Text>
-          <View style={styles.roleContainer}>
-            <TouchableOpacity
-              style={[
-                styles.roleOption,
-                role === 'customer' && styles.roleOptionActive,
-              ]}
-              onPress={() => setRole('customer')}
-            >
-              <Text
-                style={[
-                  styles.roleText,
-                  role === 'customer' && styles.roleTextActive,
-                ]}
-              >
-                Customer
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[
-                styles.roleOption,
-                role === 'admin' && styles.roleOptionActive,
-              ]}
-              onPress={() => setRole('admin')}
-            >
-              <Text
-                style={[
-                  styles.roleText,
-                  role === 'admin' && styles.roleTextActive,
-                ]}
-              >
-                Shop / Hospital Admin
-              </Text>
-            </TouchableOpacity>
-          </View>
 
           <Input
             label="Full Name *"
@@ -155,8 +140,16 @@ export default function RegisterScreen() {
             secureTextEntry
           />
 
+          <Input
+            label="Confirm Password *"
+            placeholder="Re-enter password"
+            value={confirmPassword}
+            onChangeText={setConfirmPassword}
+            secureTextEntry
+          />
+
           <Button
-            title="Create Account"
+            title="Create Customer Account"
             onPress={handleRegister}
             loading={isLoading}
             style={styles.submitButton}
@@ -168,6 +161,13 @@ export default function RegisterScreen() {
               <Text style={styles.linkText}>Sign In</Text>
             </TouchableOpacity>
           </View>
+
+          <TouchableOpacity
+            style={styles.adminRegisterLink}
+            onPress={() => router.push('/(auth)/register-admin' as any)}
+          >
+            <Text style={styles.adminRegisterText}>Register as Shop / Hospital Admin →</Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -230,38 +230,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 18,
   },
-  roleLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: Palette.text,
-    marginBottom: Spacing.xs,
-  },
-  roleContainer: {
-    flexDirection: 'row',
-    backgroundColor: Palette.surface,
-    borderRadius: BorderRadius.md,
-    padding: 4,
-    marginBottom: Spacing.md,
-    borderWidth: 1,
-    borderColor: Palette.border,
-  },
-  roleOption: {
-    flex: 1,
-    paddingVertical: Spacing.sm,
-    alignItems: 'center',
-    borderRadius: BorderRadius.sm,
-  },
-  roleOptionActive: {
-    backgroundColor: Palette.primary,
-  },
-  roleText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: Palette.mutedText,
-  },
-  roleTextActive: {
-    color: '#0B0D0E',
-  },
   submitButton: {
     marginTop: Spacing.md,
   },
@@ -277,6 +245,18 @@ const styles = StyleSheet.create({
   linkText: {
     color: Palette.primary,
     fontSize: 14,
+    fontWeight: '700',
+  },
+  adminRegisterLink: {
+    marginTop: Spacing.md,
+    alignItems: 'center',
+    paddingTop: Spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: Palette.border,
+  },
+  adminRegisterText: {
+    color: Palette.secondary,
+    fontSize: 13,
     fontWeight: '700',
   },
 });
