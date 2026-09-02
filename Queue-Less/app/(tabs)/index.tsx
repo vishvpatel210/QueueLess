@@ -55,6 +55,7 @@ export default function HomeScreen() {
 
   useEffect(() => {
     initLocationAndFetch();
+    fetchActiveToken();
   }, []);
 
   useEffect(() => {
@@ -78,6 +79,25 @@ export default function HomeScreen() {
       }
     } catch (e) {
       setLocationStatus('GPS unavailable');
+    }
+  };
+
+  const fetchActiveToken = async () => {
+    try {
+      const res = await queueService.getMyActiveTokens();
+      const tokens = res || [];
+      if (tokens.length > 0) {
+        const t = tokens[0];
+        setActiveToken({
+          ...t,
+          branchName:
+            t.queueId?.branchId?.name || t.branchName || '',
+        });
+      } else {
+        setActiveToken(null);
+      }
+    } catch (e) {
+      setActiveToken(null);
     }
   };
 

@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
+  Modal,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,7 +20,7 @@ import Badge from '../../components/common/Badge';
 import Button from '../../components/common/Button';
 import clipboardService from '../../services/clipboardService';
 import queueService from '../../services/queueService';
-import { getSocket, joinQueueRoom, leaveQueueRoom, onQueueUpdate, onTokenCalled } from '../../services/socket';
+import { joinQueueRoom, leaveQueueRoom, onQueueUpdate, onTokenCalled } from '../../services/socket';
 import { TokenItem } from '../../types/queue';
 
 export default function DigitalTokenScreen() {
@@ -32,10 +33,17 @@ export default function DigitalTokenScreen() {
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [cancelling, setCancelling] = useState<boolean>(false);
 
+  // Review modal
+  const [reviewModal, setReviewModal] = useState<boolean>(false);
+  const [rating, setRating] = useState<number>(5);
+  const [comment, setComment] = useState<string>('');
+  const [submittingReview, setSubmittingReview] = useState<boolean>(false);
+  const [hasReviewed, setHasReviewed] = useState<boolean>(false);
+
   useEffect(() => {
     if (id) {
       fetchTokenDetails();
-      const interval = setInterval(fetchTokenDetails, 15000);
+      const interval = setInterval(fetchTokenDetails, 10000);
       return () => clearInterval(interval);
     }
   }, [id]);
@@ -50,7 +58,10 @@ export default function DigitalTokenScreen() {
         });
         const unsubToken = onTokenCalled((data) => {
           if (data.tokenId === id || data.tokenNumber === token.tokenNumber) {
-            Alert.alert('🔔 IT IS YOUR TURN!', 'Your token has been called by the counter. Please proceed immediately!');
+            Alert.alert(
+              '🔔 YOUR TURN!',
+              'Your token has been called by the counter. Please proceed immediately!'
+            );
             fetchTokenDetails();
           }
         });
@@ -68,6 +79,7 @@ export default function DigitalTokenScreen() {
       const data: any = await queueService.getTokenById(id);
       setToken(data);
       setPeopleAhead(data.peopleAhead ?? 0);
+      if (data.hasReview) setHasReviewed(true);
     } catch (err: any) {
       console.log('Error fetching token:', err);
     } finally {
@@ -108,6 +120,20 @@ export default function DigitalTokenScreen() {
     );
   };
 
+  const handleSubmitReview = async () => {
+    try {
+      setSubmittingReview(true);
+      await queueService.submitReview(id, rating, comment);
+      setHasReviewed(true);
+      setReviewModal(false);
+      Alert.alert('Thank You!', 'Your review has been submitted successfully.');
+    } catch (e: any) {
+      Alert.alert('Error', e.response?.data?.message || 'Failed to submit review.');
+    } finally {
+      setSubmittingReview(false);
+    }
+  };
+
   if (loading) {
     return (
       <View style={styles.centerContainer}>
@@ -144,14 +170,18 @@ export default function DigitalTokenScreen() {
 
   const getStatusBadge = () => {
     switch (token.status) {
-      case 'SERVING':
-        return <Badge label="YOUR TURN! PLEASE PROCEED TO COUNTER" variant="warning" />;
+      case 'CALLED':
+        return <Badge label="🔔 YOUR TURN! PROCEED TO COUNTER" variant="warning" />;
+      case 'IN_PROGRESS':
+        return <Badge label="SERVICE IN PROGRESS" variant="primary" />;
       case 'COMPLETED':
-        return <Badge label="SERVICE COMPLETED" variant="success" />;
+        return <Badge label="✓ VISIT COMPLETED" variant="success" />;
       case 'CANCELLED':
         return <Badge label="TOKEN CANCELLED" variant="danger" />;
       case 'SKIPPED':
         return <Badge label="TOKEN SKIPPED" variant="danger" />;
+      case 'NO_SHOW':
+        return <Badge label="NO SHOW" variant="danger" />;
       case 'WAITING':
       default:
         return <Badge label="WAITING IN QUEUE" variant="primary" />;
@@ -162,6 +192,8 @@ export default function DigitalTokenScreen() {
     hour: '2-digit',
     minute: '2-digit',
   });
+
+  const displayToken = (token as any).displayToken || token.tokenNumber;
 
   return (
     <View style={styles.container}>
@@ -189,12 +221,12 @@ export default function DigitalTokenScreen() {
           {/* Big Token Number with Copy Action */}
           <View style={styles.tokenDisplayContainer}>
             <Text style={styles.tokenLabel}>TOKEN NUMBER</Text>
-            <Text style={styles.tokenNumber}>{token.tokenNumber}</Text>
+            <Text style={styles.tokenNumber}>{displayToken}</Text>
             <Text style={styles.serviceName}>{serviceName}</Text>
 
             <TouchableOpacity
               style={styles.copyTokenBtn}
-              onPress={() => clipboardService.copyTokenNumber(token.tokenNumber)}
+              onPress={() => clipboardService.copyTokenNumber(displayToken)}
               activeOpacity={0.75}
             >
               <Ionicons name="copy-outline" size={16} color={Palette.primary} />
@@ -203,26 +235,60 @@ export default function DigitalTokenScreen() {
           </View>
 
           {/* Real Live Stats Bar */}
-          <View style={styles.statsBar}>
-            <View style={styles.statItem}>
-              <Text style={styles.statVal}>
-                {token.status === 'WAITING' ? peopleAhead : 0}
-              </Text>
-              <Text style={styles.statLbl}>People Ahead</Text>
+          {token.status === 'WAITING' ? (
+            <View style={styles.statsBar}>
+              <View style={styles.statItem}>
+                <Text style={styles.statVal}>{peopleAhead}</Text>
+                <Text style={styles.statLbl}>People Ahead</Text>
+              </View>
+              <View style={styles.divider} />
+              <View style={styles.statItem}>
+                <Text style={styles.statVal}>
+                  ~{peopleAhead * (serviceData?.estimatedDurationMinutes || 15)}m
+                </Text>
+                <Text style={styles.statLbl}>Est. Wait Time</Text>
+              </View>
             </View>
-            <View style={styles.divider} />
-            <View style={styles.statItem}>
-              <Text style={styles.statVal}>
-                {token.status === 'WAITING'
-                  ? `~${peopleAhead * (serviceData?.estimatedDurationMinutes || 15)}m`
-                  : '—'}
+          ) : token.status === 'CALLED' ? (
+            <View style={styles.calledNotice}>
+              <Ionicons name="megaphone" size={24} color="#FF9500" />
+              <Text style={styles.calledNoticeText}>
+                Counter has called your number. Please proceed to the service desk now!
               </Text>
-              <Text style={styles.statLbl}>Est. Wait Time</Text>
             </View>
-          </View>
+          ) : token.status === 'IN_PROGRESS' ? (
+            <View style={styles.inProgressNotice}>
+              <Ionicons name="medical" size={24} color={Palette.primary} />
+              <Text style={styles.inProgressNoticeText}>Your consultation is currently in progress.</Text>
+            </View>
+          ) : token.status === 'COMPLETED' ? (
+            <View style={styles.completedNotice}>
+              <Ionicons name="checkmark-circle" size={24} color={Palette.success} />
+              <Text style={styles.completedNoticeText}>Visit Completed. Thank you for using QueueLess!</Text>
+            </View>
+          ) : null}
         </Card>
 
-        {/* Real Details Card */}
+        {/* Rate Visit Button when Completed */}
+        {token.status === 'COMPLETED' && (
+          <Card style={styles.reviewCard}>
+            <Text style={styles.detailsTitle}>Rate Your Experience</Text>
+            {hasReviewed ? (
+              <View style={styles.reviewedRow}>
+                <Ionicons name="star" size={20} color="#FFD700" />
+                <Text style={styles.reviewedText}>You have reviewed this visit. Thank you!</Text>
+              </View>
+            ) : (
+              <Button
+                title="★ Rate Your Visit"
+                onPress={() => setReviewModal(true)}
+                style={{ marginTop: Spacing.xs }}
+              />
+            )}
+          </Card>
+        )}
+
+        {/* Booking Information */}
         <Card style={styles.detailsCard}>
           <Text style={styles.detailsTitle}>Booking Information</Text>
 
@@ -248,15 +314,15 @@ export default function DigitalTokenScreen() {
           </View>
         </Card>
 
-        {/* Clipboard Actions Card */}
+        {/* Clipboard Actions */}
         <Card style={styles.actionsCard}>
-          <Text style={styles.detailsTitle}>Copy & Share Real Details</Text>
+          <Text style={styles.detailsTitle}>Copy & Share Details</Text>
 
           <TouchableOpacity
             style={styles.actionRow}
             onPress={() =>
               clipboardService.copyQueueDetails([
-                { label: 'Token Number', value: token.tokenNumber },
+                { label: 'Token Number', value: displayToken },
                 { label: 'Token ID', value: token._id },
                 { label: 'Service', value: serviceName },
                 { label: 'Branch', value: branchName },
@@ -299,6 +365,54 @@ export default function DigitalTokenScreen() {
           />
         )}
       </ScrollView>
+
+      {/* Review Modal */}
+      <Modal visible={reviewModal} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Rate Your Visit</Text>
+              <TouchableOpacity onPress={() => setReviewModal(false)}>
+                <Ionicons name="close" size={24} color={Palette.text} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.modalSubtitle}>
+              {businessName} • {serviceName}
+            </Text>
+
+            <Text style={styles.ratingPrompt}>How was your experience?</Text>
+
+            <View style={styles.starsRow}>
+              {[1, 2, 3, 4, 5].map((s) => (
+                <TouchableOpacity key={s} onPress={() => setRating(s)}>
+                  <Ionicons
+                    name={s <= rating ? 'star' : 'star-outline'}
+                    size={36}
+                    color={s <= rating ? '#FFD700' : Palette.border}
+                  />
+                </TouchableOpacity>
+              ))}
+            </View>
+            <Text style={styles.ratingText}>{rating} out of 5 stars</Text>
+
+            <View style={styles.modalActionRow}>
+              <Button
+                title="Cancel"
+                variant="outline"
+                onPress={() => setReviewModal(false)}
+                style={{ flex: 0.4 }}
+              />
+              <Button
+                title="Submit Review"
+                loading={submittingReview}
+                onPress={handleSubmitReview}
+                style={{ flex: 0.6 }}
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -424,6 +538,66 @@ const styles = StyleSheet.create({
     color: Palette.mutedText,
     marginTop: 2,
   },
+  calledNotice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    padding: Spacing.md,
+    backgroundColor: 'rgba(255,149,0,0.12)',
+    borderRadius: BorderRadius.md,
+    marginTop: Spacing.md,
+  },
+  calledNoticeText: {
+    color: '#FF9500',
+    fontWeight: '700',
+    fontSize: 13,
+    flex: 1,
+  },
+  inProgressNotice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    padding: Spacing.md,
+    backgroundColor: 'rgba(0,229,155,0.12)',
+    borderRadius: BorderRadius.md,
+    marginTop: Spacing.md,
+  },
+  inProgressNoticeText: {
+    color: Palette.primary,
+    fontWeight: '600',
+    fontSize: 13,
+    flex: 1,
+  },
+  completedNotice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    padding: Spacing.md,
+    backgroundColor: 'rgba(0,229,155,0.15)',
+    borderRadius: BorderRadius.md,
+    marginTop: Spacing.md,
+  },
+  completedNoticeText: {
+    color: Palette.success,
+    fontWeight: '700',
+    fontSize: 13,
+    flex: 1,
+  },
+  reviewCard: {
+    marginTop: Spacing.md,
+    padding: Spacing.md,
+  },
+  reviewedRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    marginTop: Spacing.xs,
+  },
+  reviewedText: {
+    color: Palette.text,
+    fontSize: 14,
+    fontWeight: '600',
+  },
   detailsCard: {
     marginTop: Spacing.md,
   },
@@ -472,6 +646,55 @@ const styles = StyleSheet.create({
   cancelBtn: {
     marginTop: Spacing.xl,
   },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.75)',
+    justifyContent: 'center',
+    padding: Spacing.lg,
+  },
+  modalCard: {
+    backgroundColor: Palette.card,
+    borderRadius: BorderRadius.xl,
+    padding: Spacing.xl,
+    borderWidth: 1,
+    borderColor: Palette.border,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: Spacing.xs,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: Palette.text,
+  },
+  modalSubtitle: {
+    fontSize: 13,
+    color: Palette.mutedText,
+    marginBottom: Spacing.md,
+  },
+  ratingPrompt: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: Palette.text,
+    marginBottom: Spacing.sm,
+  },
+  starsRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: Spacing.sm,
+    marginVertical: Spacing.sm,
+  },
+  ratingText: {
+    textAlign: 'center',
+    color: Palette.mutedText,
+    fontSize: 13,
+    marginBottom: Spacing.lg,
+  },
+  modalActionRow: {
+    flexDirection: 'row',
+    gap: Spacing.md,
+  },
 });
-
-// End of digital token screen
