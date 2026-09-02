@@ -18,7 +18,7 @@ import Header from '../../components/common/Header';
 import Card from '../../components/common/Card';
 import Badge from '../../components/common/Badge';
 import Button from '../../components/common/Button';
-import { useSocket } from '../../context/SocketContext';
+import { subscribeUserAlerts, onTokenCalled, onTokenUpdated } from '../../services/socket';
 import api from '../../services/api';
 
 interface TokenData {
@@ -60,7 +60,6 @@ const STATUS_COLORS: Record<string, string> = {
 export default function QueueTabScreen() {
   const router = useRouter();
   const { user } = useAuth();
-  const { socket } = useSocket();
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -86,31 +85,30 @@ export default function QueueTabScreen() {
 
   // Socket.IO: listen for real-time token updates
   useEffect(() => {
-    if (!socket || !token) return;
+    if (!token || !user) return;
 
-    // Join user's personal notification channel
-    socket.emit('join:user', user?._id || (user as any)?.id);
+    const uId = user.id || (user as any)._id;
+    if (uId) {
+      subscribeUserAlerts(uId);
+    }
 
-    const onTokenCalled = (payload: any) => {
+    const unsubCalled = onTokenCalled((payload: any) => {
       if (payload.tokenId === token._id) {
-        setToken((prev) => prev ? { ...prev, status: 'CALLED' } : prev);
+        setToken((prev) => (prev ? { ...prev, status: 'CALLED' } : prev));
       }
-    };
+    });
 
-    const onTokenUpdated = (payload: any) => {
+    const unsubUpdated = onTokenUpdated((payload: any) => {
       if (payload.tokenId === token._id) {
-        setToken((prev) => prev ? { ...prev, status: payload.status } : prev);
+        setToken((prev) => (prev ? { ...prev, status: payload.status } : prev));
       }
-    };
-
-    socket.on('token:called', onTokenCalled);
-    socket.on('token:updated', onTokenUpdated);
+    });
 
     return () => {
-      socket.off('token:called', onTokenCalled);
-      socket.off('token:updated', onTokenUpdated);
+      unsubCalled();
+      unsubUpdated();
     };
-  }, [socket, token?._id, user]);
+  }, [token?._id, user]);
 
   const handleCancelToken = async () => {
     if (!token) return;

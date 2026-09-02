@@ -6,6 +6,7 @@ import { Palette } from '../constants/Colors';
 import { Spacing, BorderRadius } from '../constants/theme';
 import Header from '../components/common/Header';
 import Button from '../components/common/Button';
+import branchService from '../services/branchService';
 
 export default function QRScannerScreen() {
   const router = useRouter();

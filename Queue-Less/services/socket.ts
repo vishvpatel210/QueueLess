@@ -1,4 +1,4 @@
-﻿import { io, Socket } from 'socket.io-client';
+import { io, Socket } from 'socket.io-client';
 import { API_BASE_URL } from './api';
 
 const SOCKET_SERVER_URL = API_BASE_URL.replace(/\/api\/?$/, '');
@@ -62,6 +62,14 @@ export const onTokenCalled = (callback: (data: any) => void) => {
   };
 };
 
+export const onTokenUpdated = (callback: (data: any) => void) => {
+  const s = getSocket();
+  s.on('token:updated', callback);
+  return () => {
+    s.off('token:updated', callback);
+  };
+};
+
 export default {
   getSocket,
   joinQueueRoom,
@@ -69,4 +77,5 @@ export default {
   subscribeUserAlerts,
   onQueueUpdate,
   onTokenCalled,
+  onTokenUpdated,
 };

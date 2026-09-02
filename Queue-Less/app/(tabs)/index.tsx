@@ -87,12 +87,11 @@ export default function HomeScreen() {
       const res = await queueService.getMyActiveTokens();
       const tokens = res || [];
       if (tokens.length > 0) {
-        const t = tokens[0];
+        const t: any = tokens[0];
         setActiveToken({
           ...t,
-          branchName:
-            t.queueId?.branchId?.name || t.branchName || '',
-        });
+          branchName: t.queueId?.branchId?.name || t.branchName || '',
+        } as any);
       } else {
         setActiveToken(null);
       }

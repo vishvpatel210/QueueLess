@@ -269,7 +269,7 @@ const styles = StyleSheet.create({
   kpiValue: { fontSize: 24, fontWeight: '800', color: Palette.text },
   kpiLabel: { fontSize: 11, color: Palette.mutedText, marginTop: 4, textAlign: 'center' },
   kpiDivider: { width: 1, height: 40, backgroundColor: Palette.border },
-  peakCard: { marginBottom: Spacing.md, padding: Palette.md || Spacing.md },
+  peakCard: { marginBottom: Spacing.md, padding: Spacing.md },
   peakRow: { flexDirection: 'row', alignItems: 'center' },
   peakLabel: { fontSize: 12, color: Palette.mutedText, fontWeight: '600' },
   peakValue: { fontSize: 18, fontWeight: '700', color: Palette.text },

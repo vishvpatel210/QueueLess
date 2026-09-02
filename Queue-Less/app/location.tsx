@@ -126,7 +126,7 @@ export default function LocationScreen() {
                   <View style={{ flex: 1 }}>
                     <Text style={styles.branchName}>{selectedBranch.branchName}</Text>
                     <Text style={styles.bizName}>
-                      {selectedBranch.category} • {selectedBranch.businessName}
+                      {selectedBranch.business?.category || 'Service'} • {selectedBranch.business?.name}
                     </Text>
                   </View>
                   <Badge label={`${selectedBranch.distanceKm} km away`} variant="primary" />
@@ -156,7 +156,7 @@ export default function LocationScreen() {
                   <TouchableOpacity
                     style={styles.bookBtn}
                     onPress={() => {
-                      router.push(`/business/${selectedBranch.businessId}` as any);
+                      router.push(`/business/${selectedBranch.business?._id}` as any);
                     }}
                   >
                     <Text style={styles.bookBtnText}>Book Token →</Text>
@@ -201,11 +201,11 @@ export default function LocationScreen() {
               </Card>
             ) : (
               branches.map((b) => {
-                const isSelected = selectedBranch?.branchId === b.branchId;
+                const isSelected = selectedBranch?._id === b._id;
 
                 return (
                   <TouchableOpacity
-                    key={b.branchId}
+                    key={b._id}
                     style={[styles.branchListItem, isSelected && styles.branchListItemActive]}
                     onPress={() => {
                       setSelectedBranch(b);
@@ -215,7 +215,7 @@ export default function LocationScreen() {
                     <View style={{ flex: 1 }}>
                       <Text style={styles.itemTitle}>{b.branchName}</Text>
                       <Text style={styles.itemCategory}>
-                        {b.category} • {b.address}
+                        {b.business?.category} • {b.address}
                       </Text>
                     </View>
                     <Badge label={`${b.distanceKm} km`} variant={isSelected ? 'success' : 'primary'} />
