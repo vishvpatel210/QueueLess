@@ -95,12 +95,36 @@ export default function CustomerRegisterScreen() {
       >
         <View style={styles.headerContainer}>
           <Text style={styles.brandTitle}>QueueLess</Text>
-          <Text style={styles.brandTagline}>Create Customer Pass Account</Text>
+          <Text style={styles.brandTagline}>Smart Digital Queue Platform</Text>
+        </View>
+
+        {/* Role Switcher Tabs */}
+        <View style={styles.roleSwitcherContainer}>
+          <TouchableOpacity
+            style={[styles.roleTab, styles.roleTabActive]}
+            activeOpacity={0.9}
+          >
+            <Text style={styles.roleTabIcon}>👤</Text>
+            <Text style={[styles.roleTabText, styles.roleTabTextActive]}>
+              Customer / Patient
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.roleTab}
+            onPress={() => router.replace('/(auth)/register-admin' as any)}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.roleTabIcon}>🏢</Text>
+            <Text style={styles.roleTabText}>Hospital / Shop</Text>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.formCard}>
-          <Text style={styles.formTitle}>Customer Sign Up</Text>
-          <Text style={styles.formSubtitle}>Skip physical queues at clinics, salons & banks</Text>
+          <Text style={styles.formTitle}>Customer / Patient Sign Up</Text>
+          <Text style={styles.formSubtitle}>
+            Join digital queues, take tokens, and track waiting time live
+          </Text>
 
           {errorMessage ? (
             <View style={styles.errorBanner}>
@@ -258,5 +282,38 @@ const styles = StyleSheet.create({
     color: Palette.secondary,
     fontSize: 13,
     fontWeight: '700',
+  },
+  roleSwitcherContainer: {
+    flexDirection: 'row',
+    backgroundColor: Palette.surface,
+    borderRadius: BorderRadius.lg,
+    padding: 4,
+    marginBottom: Spacing.md,
+    borderWidth: 1,
+    borderColor: Palette.border,
+    gap: 4,
+  },
+  roleTab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    borderRadius: BorderRadius.md,
+    gap: 6,
+  },
+  roleTabActive: {
+    backgroundColor: Palette.primary,
+  },
+  roleTabIcon: {
+    fontSize: 15,
+  },
+  roleTabText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: Palette.mutedText,
+  },
+  roleTabTextActive: {
+    color: '#0B0D0E',
   },
 });

@@ -136,18 +136,38 @@ export default function LoginScreen() {
           />
 
           <View style={styles.footerRow}>
-            <Text style={styles.footerText}>Don't have an account? </Text>
-            <TouchableOpacity onPress={() => router.push('/(auth)/register')}>
-              <Text style={styles.linkText}>Customer Register</Text>
-            </TouchableOpacity>
+            <Text style={styles.footerText}>New to QueueLess? Create an account:</Text>
           </View>
 
-          <TouchableOpacity
-            style={styles.adminRegisterLink}
-            onPress={() => router.push('/(auth)/register-admin' as any)}
-          >
-            <Text style={styles.adminRegisterText}>Register as Shop / Hospital Admin →</Text>
-          </TouchableOpacity>
+          <View style={styles.registerButtonsRow}>
+            <TouchableOpacity
+              style={styles.roleChoiceBtn}
+              onPress={() => router.push('/(auth)/register')}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.roleChoiceIcon}>👤</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.roleChoiceTitle}>Customer / Patient</Text>
+                <Text style={styles.roleChoiceSubtitle}>Take digital tokens & skip waiting lines</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color={Palette.primary} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.roleChoiceBtn, styles.roleChoiceBtnAdmin]}
+              onPress={() => router.push('/(auth)/register-admin' as any)}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.roleChoiceIcon}>🏢</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.roleChoiceTitle, { color: Palette.secondary }]}>
+                  Hospital / Shopkeeper / Admin
+                </Text>
+                <Text style={styles.roleChoiceSubtitle}>Manage queues, call patients & QR pass</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color={Palette.secondary} />
+            </TouchableOpacity>
+          </View>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -269,16 +289,39 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
   },
-  adminRegisterLink: {
-    marginTop: Spacing.md,
-    alignItems: 'center',
-    paddingTop: Spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: Palette.border,
-  },
   adminRegisterText: {
     color: Palette.secondary,
     fontSize: 13,
     fontWeight: '700',
+  },
+  registerButtonsRow: {
+    marginTop: Spacing.sm,
+    gap: Spacing.sm,
+  },
+  roleChoiceBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: Spacing.md,
+    backgroundColor: Palette.surface,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 229, 155, 0.3)',
+    gap: Spacing.md,
+  },
+  roleChoiceBtnAdmin: {
+    borderColor: 'rgba(199, 243, 107, 0.3)',
+  },
+  roleChoiceIcon: {
+    fontSize: 24,
+  },
+  roleChoiceTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: Palette.primary,
+  },
+  roleChoiceSubtitle: {
+    fontSize: 11,
+    color: Palette.mutedText,
+    marginTop: 2,
   },
 });

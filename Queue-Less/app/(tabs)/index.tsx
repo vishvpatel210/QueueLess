@@ -226,25 +226,25 @@ export default function HomeScreen() {
         ) : nearbyBranches.length === 0 ? (
           <Card style={styles.emptyStateCard}>
             <View style={styles.emptyIconCircle}>
-              <Ionicons name="storefront-outline" size={36} color={Palette.mutedText} />
+              <Ionicons name="location-outline" size={36} color={Palette.primary} />
             </View>
             <Text style={styles.emptyTitle}>No QueueLess businesses nearby</Text>
             <Text style={styles.emptySubtitle}>
               {search || selectedCategory !== 'All'
-                ? 'No registered QueueLess businesses matched your search or category filter.'
-                : 'QueueLess only displays real businesses that have actively registered on our platform. None are registered near your location yet.'}
+                ? 'No registered places matched your search or category filter.'
+                : 'No registered clinics, salons, or businesses found in your area yet. Once a business registers on QueueLess, it will appear here live with real wait times.'}
             </Text>
             <Button
-              title="Register Your Business on QueueLess"
-              onPress={() => router.push('/(auth)/register-admin' as any)}
+              title="Refresh Location & Search"
+              onPress={onRefresh}
               style={styles.refreshBtn}
             />
-            <Button
-              title="Refresh Location & Search"
-              variant="outline"
-              onPress={onRefresh}
-              style={[styles.refreshBtn, { marginTop: Spacing.sm }]}
-            />
+            <View style={styles.bizOwnerPromptRow}>
+              <Text style={styles.bizOwnerPromptText}>Own a clinic, salon or shop? </Text>
+              <TouchableOpacity onPress={() => router.push('/(auth)/register-admin' as any)}>
+                <Text style={styles.bizOwnerPromptLink}>Register Business →</Text>
+              </TouchableOpacity>
+            </View>
           </Card>
         ) : (
           nearbyBranches.map((item) => (
@@ -414,5 +414,21 @@ const styles = StyleSheet.create({
   },
   refreshBtn: {
     width: '100%',
+  },
+  bizOwnerPromptRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: Spacing.md,
+    paddingTop: Spacing.sm,
+  },
+  bizOwnerPromptText: {
+    fontSize: 12,
+    color: Palette.mutedText,
+  },
+  bizOwnerPromptLink: {
+    fontSize: 12,
+    color: Palette.primary,
+    fontWeight: '700',
   },
 });
