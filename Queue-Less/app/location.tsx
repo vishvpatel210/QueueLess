@@ -10,6 +10,7 @@ import {
   Platform,
   Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
@@ -58,7 +59,7 @@ export default function LocationScreen() {
         setSelectedBranch(data[0]);
       }
     } catch (err) {
-      console.log('Error loading locations:', err);
+      console.log('Error init GPS:', err);
     } finally {
       setLoading(false);
     }
@@ -95,7 +96,7 @@ export default function LocationScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <Header title="Live GPS & Nearby Places" subtitle="GPS radar & proximity check-in" showBack />
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -226,7 +227,7 @@ export default function LocationScreen() {
           </>
         )}
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 

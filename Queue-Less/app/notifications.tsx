@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Palette } from '../constants/Colors';
 import { Spacing, BorderRadius } from '../constants/theme';
@@ -137,7 +138,7 @@ export default function NotificationsScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <Header title="Notifications" showBack />
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -222,7 +223,7 @@ export default function NotificationsScreen() {
           </Text>
         </Card>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 

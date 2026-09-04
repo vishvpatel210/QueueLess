@@ -9,6 +9,7 @@ import {
   Linking,
   Platform,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Palette } from '../../constants/Colors';
@@ -89,24 +90,24 @@ export default function BusinessDetailScreen() {
 
   if (loading) {
     return (
-      <View style={styles.centerContainer}>
+      <SafeAreaView style={styles.centerContainer} edges={['top']}>
         <ActivityIndicator size="large" color={Palette.primary} />
         <Text style={styles.loadingText}>Loading registered business...</Text>
-      </View>
+      </SafeAreaView>
     );
   }
 
   if (!business) {
     return (
-      <View style={styles.centerContainer}>
+      <SafeAreaView style={styles.centerContainer} edges={['top']}>
         <Text style={styles.errorText}>Business not found.</Text>
         <Button title="Go Back" onPress={() => router.back()} style={{ marginTop: Spacing.md }} />
-      </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <Header title="Registered Place Details" showBack />
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -256,7 +257,7 @@ export default function BusinessDetailScreen() {
           })
         )}
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 

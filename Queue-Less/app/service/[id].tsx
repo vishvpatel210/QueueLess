@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Palette } from '../../constants/Colors';
@@ -80,19 +81,19 @@ export default function ServiceDetailScreen() {
 
   if (loading) {
     return (
-      <View style={styles.centerContainer}>
+      <SafeAreaView style={styles.centerContainer} edges={['top']}>
         <ActivityIndicator size="large" color={Palette.primary} />
         <Text style={styles.loadingText}>Loading queue service...</Text>
-      </View>
+      </SafeAreaView>
     );
   }
 
   if (!service) {
     return (
-      <View style={styles.centerContainer}>
+      <SafeAreaView style={styles.centerContainer} edges={['top']}>
         <Text style={styles.errorText}>Service not found.</Text>
         <Button title="Go Back" onPress={() => router.back()} style={{ marginTop: Spacing.md }} />
-      </View>
+      </SafeAreaView>
     );
   }
 
@@ -101,7 +102,7 @@ export default function ServiceDetailScreen() {
   const estWait = waitingCount * service.estimatedDurationMinutes;
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <Header title="Join Live Queue" showBack />
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -207,7 +208,7 @@ export default function ServiceDetailScreen() {
           style={styles.confirmBtn}
         />
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 

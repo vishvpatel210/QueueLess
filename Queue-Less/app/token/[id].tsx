@@ -10,6 +10,7 @@ import {
   RefreshControl,
   Modal,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Palette } from '../../constants/Colors';
@@ -136,16 +137,16 @@ export default function DigitalTokenScreen() {
 
   if (loading) {
     return (
-      <View style={styles.centerContainer}>
+      <SafeAreaView style={styles.centerContainer} edges={['top']}>
         <ActivityIndicator size="large" color={Palette.primary} />
         <Text style={styles.loadingText}>Fetching digital queue pass...</Text>
-      </View>
+      </SafeAreaView>
     );
   }
 
   if (!token) {
     return (
-      <View style={styles.centerContainer}>
+      <SafeAreaView style={styles.centerContainer} edges={['top']}>
         <Ionicons name="alert-circle-outline" size={48} color={Palette.danger} />
         <Text style={styles.errorText}>Digital token pass not found.</Text>
         <Button
@@ -153,7 +154,7 @@ export default function DigitalTokenScreen() {
           onPress={() => router.replace('/(tabs)' as any)}
           style={{ marginTop: Spacing.md }}
         />
-      </View>
+      </SafeAreaView>
     );
   }
 
@@ -196,7 +197,7 @@ export default function DigitalTokenScreen() {
   const displayToken = (token as any).displayToken || token.tokenNumber;
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <Header title="Digital Pass" showBack />
 
       <ScrollView
@@ -413,7 +414,7 @@ export default function DigitalTokenScreen() {
           </View>
         </View>
       </Modal>
-    </View>
+    </SafeAreaView>
   );
 }
 

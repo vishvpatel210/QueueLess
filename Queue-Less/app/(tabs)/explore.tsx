@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 import { BusinessCategory, NearbyBranchItem } from '../../types/business';
 import { Palette } from '../../constants/Colors';
@@ -127,7 +128,7 @@ export default function ExploreScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <Header
         title="Explore Live Locations"
         subtitle="Only registered hospitals, salons & shops"
@@ -395,7 +396,7 @@ export default function ExploreScreen() {
           })
         )}
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 

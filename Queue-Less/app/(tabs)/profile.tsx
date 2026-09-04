@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
 import { Palette } from '../../constants/Colors';
 import { Spacing, BorderRadius } from '../../constants/theme';
@@ -30,7 +31,7 @@ export default function CustomerProfileScreen() {
 
   if (!user) {
     return (
-      <View style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top']}>
         <Header title="Profile" />
         <View style={styles.center}>
           <Card style={styles.guestCard}>
@@ -52,7 +53,7 @@ export default function CustomerProfileScreen() {
             />
           </Card>
         </View>
-      </View>
+      </SafeAreaView>
     );
   }
 
@@ -61,7 +62,7 @@ export default function CustomerProfileScreen() {
     : 'U';
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <Header title="Profile" />
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* Avatar & Info */}
@@ -141,7 +142,7 @@ export default function CustomerProfileScreen() {
           style={styles.logoutBtn}
         />
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 

@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Palette } from '../../constants/Colors';
 import { Spacing, BorderRadius } from '../../constants/theme';
 import Header from '../../components/common/Header';
@@ -269,16 +270,16 @@ export default function AdminDashboardScreen() {
 
   if (loading) {
     return (
-      <View style={styles.centerContainer}>
+      <SafeAreaView style={styles.centerContainer} edges={['top']}>
         <ActivityIndicator size="large" color={Palette.primary} />
         <Text style={styles.loadingText}>Loading Admin Control Center...</Text>
-      </View>
+      </SafeAreaView>
     );
   }
 
   if (!business) {
     return (
-      <View style={styles.centerContainer}>
+      <SafeAreaView style={styles.centerContainer} edges={['top']}>
         <Ionicons name="business-outline" size={48} color={Palette.mutedText} />
         <Text style={styles.emptyTitle}>No Business Found</Text>
         <Text style={styles.emptySubtitle}>
@@ -289,7 +290,7 @@ export default function AdminDashboardScreen() {
           onPress={() => router.push('/(auth)/register-admin' as any)}
           style={{ marginTop: Spacing.md }}
         />
-      </View>
+      </SafeAreaView>
     );
   }
 
@@ -301,7 +302,7 @@ export default function AdminDashboardScreen() {
     (calledToken ? 1 : 0) + (inProgressToken ? 1 : 0);
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <Header
         title="Admin Dashboard"
         subtitle={business.name}
@@ -523,7 +524,7 @@ export default function AdminDashboardScreen() {
           ))
         )}
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 

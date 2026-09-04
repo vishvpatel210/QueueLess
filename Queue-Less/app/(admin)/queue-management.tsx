@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Palette } from '../../constants/Colors';
 import { Spacing, BorderRadius } from '../../constants/theme';
 import Header from '../../components/common/Header';
@@ -154,29 +155,29 @@ export default function QueueManagementScreen() {
 
   if (loading) {
     return (
-      <View style={styles.centerContainer}>
+      <SafeAreaView style={styles.centerContainer} edges={['top']}>
         <ActivityIndicator size="large" color={Palette.primary} />
-        <Text style={styles.loadingText}>Loading queue settings...</Text>
-      </View>
+        <Text style={styles.loadingText}>Loading Queue Configuration...</Text>
+      </SafeAreaView>
     );
   }
 
   if (!business || !selectedBranch) {
     return (
-      <View style={styles.centerContainer}>
+      <SafeAreaView style={styles.centerContainer} edges={['top']}>
         <Ionicons name="business-outline" size={48} color={Palette.mutedText} />
-        <Text style={styles.emptyTitle}>No Business Found</Text>
+        <Text style={styles.emptyTitle}>No Business or Branch Found</Text>
         <Button
           title="Onboard Business"
           onPress={() => router.push('/(auth)/register-admin' as any)}
           style={{ marginTop: Spacing.md }}
         />
-      </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <Header title="Queue Settings" subtitle={business.name} showBack />
 
       <ScrollView
@@ -361,7 +362,7 @@ export default function QueueManagementScreen() {
           </View>
         </View>
       </Modal>
-    </View>
+    </SafeAreaView>
   );
 }
 

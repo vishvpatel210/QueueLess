@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
 import { Palette } from '../../constants/Colors';
 import { Spacing, BorderRadius } from '../../constants/theme';
@@ -84,10 +85,10 @@ export default function AdminProfileScreen() {
 
   if (loading) {
     return (
-      <View style={styles.center}>
+      <SafeAreaView style={styles.center} edges={['top']}>
         <ActivityIndicator size="large" color={Palette.primary} />
         <Text style={styles.loadingText}>Loading Admin Profile...</Text>
-      </View>
+      </SafeAreaView>
     );
   }
 
@@ -97,7 +98,7 @@ export default function AdminProfileScreen() {
   )}&bgcolor=15181b&color=00E59B`;
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <Header title="Business & Admin" subtitle="Management & QR Code" />
 
       <ScrollView
@@ -237,7 +238,7 @@ export default function AdminProfileScreen() {
           style={styles.logoutBtn}
         />
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 

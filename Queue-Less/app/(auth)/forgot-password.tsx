@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Palette } from '../../constants/Colors';
 import { Spacing, BorderRadius } from '../../constants/theme';
 import Header from '../../components/common/Header';
@@ -19,7 +20,7 @@ export default function ForgotPasswordScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <Header title="Reset Password" showBack />
 
       <View style={styles.content}>
@@ -61,7 +62,7 @@ export default function ForgotPasswordScreen() {
           )}
         </View>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 

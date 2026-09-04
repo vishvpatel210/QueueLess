@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Palette } from '../constants/Colors';
@@ -43,7 +44,7 @@ export default function ContactsPickerScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <Header title="Select Contact" subtitle="Join queue for someone else" showBack />
 
       <View style={styles.content}>
@@ -94,7 +95,7 @@ export default function ContactsPickerScreen() {
           </ScrollView>
         )}
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 

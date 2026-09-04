@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
 import { Palette } from '../../constants/Colors';
 import { Spacing, BorderRadius } from '../../constants/theme';
@@ -143,16 +144,16 @@ export default function QueueTabScreen() {
 
   if (loading) {
     return (
-      <View style={styles.center}>
+      <SafeAreaView style={styles.center} edges={['top']}>
         <ActivityIndicator size="large" color={Palette.primary} />
         <Text style={styles.loadingText}>Fetching your live token...</Text>
-      </View>
+      </SafeAreaView>
     );
   }
 
   if (!token) {
     return (
-      <View style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top']}>
         <Header title="My Queue" subtitle="Your live digital pass" />
         <ScrollView
           contentContainerStyle={styles.emptyScroll}
@@ -175,7 +176,7 @@ export default function QueueTabScreen() {
             />
           </View>
         </ScrollView>
-      </View>
+      </SafeAreaView>
     );
   }
 
@@ -190,7 +191,7 @@ export default function QueueTabScreen() {
   const isCompleted = status === 'COMPLETED';
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <Header title="My Queue" subtitle="Live real-time tracker" />
       <ScrollView
         contentContainerStyle={styles.scrollContent}
@@ -298,7 +299,7 @@ export default function QueueTabScreen() {
           Joined: {new Date(token.joinedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
         </Text>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 

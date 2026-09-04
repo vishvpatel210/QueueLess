@@ -8,6 +8,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Palette } from '../../constants/Colors';
 import { Spacing, BorderRadius } from '../../constants/theme';
 import Header from '../../components/common/Header';
@@ -83,16 +84,16 @@ export default function AdminAnalyticsScreen() {
 
   if (loading) {
     return (
-      <View style={styles.center}>
+      <SafeAreaView style={styles.center} edges={['top']}>
         <ActivityIndicator size="large" color={Palette.primary} />
         <Text style={styles.loadingText}>Loading analytics...</Text>
-      </View>
+      </SafeAreaView>
     );
   }
 
   if (!analytics) {
     return (
-      <View style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top']}>
         <Header title="Analytics" subtitle="Queue performance data" />
         <ScrollView
           contentContainerStyle={styles.emptyScroll}
@@ -106,14 +107,14 @@ export default function AdminAnalyticsScreen() {
             </Text>
           </View>
         </ScrollView>
-      </View>
+      </SafeAreaView>
     );
   }
 
   const { summary, peakHour, serviceBreakdown } = analytics;
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <Header title="Analytics" subtitle="Real performance metrics" />
 
       <ScrollView
@@ -206,7 +207,7 @@ export default function AdminAnalyticsScreen() {
           </Card>
         )}
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 
