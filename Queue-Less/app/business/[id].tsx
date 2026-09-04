@@ -209,7 +209,7 @@ export default function BusinessDetailScreen() {
             const currentToken = srv.queue?.currentTokenNumber || 'None';
 
             return (
-              <Card key={srv._id} style={styles.serviceCard}>
+              <Card key={srv._id} style={[styles.serviceCard, (srv.isActive === false || srv.queue?.status === 'PAUSED') && { opacity: 0.85 }]}>
                 <View style={styles.serviceHeader}>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.serviceName}>{srv.name}</Text>
@@ -218,8 +218,8 @@ export default function BusinessDetailScreen() {
                     </Text>
                   </View>
                   <Badge
-                    label={`Token Prefix: ${srv.prefix || 'A'}`}
-                    variant="primary"
+                    label={srv.isActive === false || srv.queue?.status === 'PAUSED' ? '⏸ SERVICE STOPPED' : `Token Prefix: ${srv.prefix || 'A'}`}
+                    variant={srv.isActive === false || srv.queue?.status === 'PAUSED' ? 'warning' : 'primary'}
                   />
                 </View>
 
@@ -247,9 +247,10 @@ export default function BusinessDetailScreen() {
                     ⏱ {srv.estimatedDurationMinutes} mins / customer consultation
                   </Text>
                   <Button
-                    title="Get Token & Join Queue"
+                    title={srv.isActive === false || srv.queue?.status === 'PAUSED' ? 'Service Stopped (View)' : 'Get Token & Join Queue'}
                     onPress={() => router.push(`/service/${srv._id}` as any)}
                     style={styles.selectBtn}
+                    variant={srv.isActive === false || srv.queue?.status === 'PAUSED' ? 'outline' : 'primary'}
                   />
                 </View>
               </Card>

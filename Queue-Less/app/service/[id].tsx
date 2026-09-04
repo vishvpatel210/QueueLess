@@ -50,7 +50,17 @@ export default function ServiceDetailScreen() {
     }
   };
 
+  const isStopped = service ? (service.isActive === false || service.queue?.status === 'PAUSED' || service.queue?.status === 'CLOSED') : false;
+
   const handleBookToken = async () => {
+    if (isStopped) {
+      Alert.alert(
+        'Service Stopped',
+        'This queue service is currently stopped / paused by the counter staff. Tokens cannot be generated at this moment.'
+      );
+      return;
+    }
+
     if (!service || !service.queue) {
       Alert.alert('Queue Unavailable', 'The queue for this service is not open today.');
       return;
@@ -113,7 +123,10 @@ export default function ServiceDetailScreen() {
             {service.branchId?.name || 'Registered Branch'}
           </Text>
           <View style={styles.badgeRow}>
-            <Badge label="QUEUE IS OPEN TODAY" variant="success" />
+            <Badge
+              label={isStopped ? '⏸ SERVICE TEMPORARILY STOPPED' : 'QUEUE IS OPEN TODAY'}
+              variant={isStopped ? 'warning' : 'success'}
+            />
             <Badge label={`Prefix: ${service.prefix}`} variant="primary" />
           </View>
 
@@ -202,10 +215,10 @@ export default function ServiceDetailScreen() {
         ) : null}
 
         <Button
-          title="Confirm & Generate Real Token"
+          title={isStopped ? '⏸ Service Currently Stopped' : 'Confirm & Generate Real Token'}
           loading={submitting}
           onPress={handleBookToken}
-          style={styles.confirmBtn}
+          style={[styles.confirmBtn, isStopped && { backgroundColor: Palette.border, borderColor: Palette.border }]}
         />
       </ScrollView>
     </SafeAreaView>

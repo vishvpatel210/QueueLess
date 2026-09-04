@@ -9,7 +9,12 @@ const Token = require('../models/Token');
 const getServicesByBranch = async (req, res, next) => {
   try {
     const { branchId } = req.params;
-    const services = await Service.find({ branchId, isActive: true });
+    const includeInactive = req.query.includeInactive === 'true' || req.query.all === 'true';
+    const filter = { branchId };
+    if (!includeInactive) {
+      filter.isActive = true;
+    }
+    const services = await Service.find(filter);
     const todayStr = new Date().toISOString().split('T')[0];
 
     const servicesWithQueues = await Promise.all(
@@ -150,7 +155,7 @@ const getServiceById = async (req, res, next) => {
   }
 };
 
-// @desc    Update service details
+// @desc    Update service details / toggle stop & continue
 // @route   PATCH /api/services/:id
 // @access  Protected (Admin / Owner)
 const updateService = async (req, res, next) => {
@@ -168,7 +173,14 @@ const updateService = async (req, res, next) => {
     if (price !== undefined) service.price = price;
     if (maxQueueCapacity) service.maxQueueCapacity = maxQueueCapacity;
     if (prefix) service.prefix = prefix.toUpperCase().trim();
-    if (isActive !== undefined) service.isActive = isActive;
+    if (isActive !== undefined) {
+      service.isActive = Boolean(isActive);
+      const todayStr = new Date().toISOString().split('T')[0];
+      await Queue.updateMany(
+        { serviceId: service._id, date: todayStr },
+        { $set: { status: service.isActive ? 'OPEN' : 'PAUSED' } }
+      );
+    }
 
     await service.save();
 
@@ -191,12 +203,16 @@ const deleteService = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Service not found' });
     }
 
-    service.isActive = false;
-    await service.save();
+    const todayStr = new Date().toISOString().split('T')[0];
+    await Queue.updateMany(
+      { serviceId: service._id, date: todayStr },
+      { $set: { status: 'CLOSED' } }
+    );
+    await Service.findByIdAndDelete(service._id);
 
     res.status(200).json({
       success: true,
-      message: 'Service deactivated successfully',
+      message: 'Service deleted successfully',
       data: service,
     });
   } catch (error) {

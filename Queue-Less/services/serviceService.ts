@@ -15,9 +15,18 @@ export const serviceService = {
     return response.data.data;
   },
 
-  async getServicesByBranch(branchId: string): Promise<ServiceWithQueue[]> {
-    const response = await api.get<{ success: boolean; data: ServiceWithQueue[] }>(
-      `/branches/${branchId}/services`
+  async getServicesByBranch(branchId: string, includeInactive = false): Promise<ServiceWithQueue[]> {
+    const url = includeInactive
+      ? `/branches/${branchId}/services?includeInactive=true`
+      : `/branches/${branchId}/services`;
+    const response = await api.get<{ success: boolean; data: ServiceWithQueue[] }>(url);
+    return response.data.data;
+  },
+
+  async toggleServiceStatus(serviceId: string, isActive: boolean): Promise<ServiceItem> {
+    const response = await api.patch<{ success: boolean; data: ServiceItem }>(
+      `/services/${serviceId}`,
+      { isActive }
     );
     return response.data.data;
   },

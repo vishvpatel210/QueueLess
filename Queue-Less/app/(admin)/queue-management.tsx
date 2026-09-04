@@ -63,7 +63,8 @@ export default function QueueManagementScreen() {
         if (branchList.length > 0) {
           const activeBr = branchList[0];
           setSelectedBranch(activeBr);
-          setServices(activeBr.services || []);
+          const srvList = await serviceService.getServicesByBranch(activeBr._id, true);
+          setServices(srvList);
         }
       }
     } catch (e: any) {
@@ -79,9 +80,47 @@ export default function QueueManagementScreen() {
     loadData();
   }, []);
 
-  const handleBranchSelect = (branch: Branch) => {
+  const handleBranchSelect = async (branch: Branch) => {
     setSelectedBranch(branch);
-    setServices((branch as any).services || []);
+    try {
+      const srvList = await serviceService.getServicesByBranch(branch._id, true);
+      setServices(srvList);
+    } catch (e) {
+      setServices((branch as any).services || []);
+    }
+  };
+
+  const handleToggleServiceActive = async (srv: ServiceItem) => {
+    const newStatus = !srv.isActive;
+    const actionTitle = newStatus ? 'Continue / Resume Service' : 'Stop / Pause Service Queue';
+    const actionMsg = newStatus
+      ? `Do you want to continue "${srv.name}" and open the queue for new customer tokens?`
+      : `Do you want to stop "${srv.name}"? Customers will not be able to get new tokens for this service until you continue it.`;
+
+    Alert.alert(actionTitle, actionMsg, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: newStatus ? 'Continue Service' : 'Stop Service',
+        style: newStatus ? 'default' : 'destructive',
+        onPress: async () => {
+          try {
+            await serviceService.toggleServiceStatus(srv._id, newStatus);
+            Alert.alert(
+              newStatus ? '✅ Service Resumed' : '⏸ Service Stopped',
+              newStatus
+                ? `"${srv.name}" is now active and accepting customers.`
+                : `"${srv.name}" is now stopped. Queue is paused for this service.`
+            );
+            if (selectedBranch) {
+              const updated = await serviceService.getServicesByBranch(selectedBranch._id, true);
+              setServices(updated);
+            }
+          } catch (e: any) {
+            Alert.alert('Error', e.response?.data?.message || 'Failed to update service status.');
+          }
+        },
+      },
+    ]);
   };
 
   const handleOpenAddModal = () => {
@@ -112,7 +151,7 @@ export default function QueueManagementScreen() {
 
     try {
       setSaving(true);
-      const created = await serviceService.createService(selectedBranch._id, {
+      await serviceService.createService(selectedBranch._id, {
         name: cleanName,
         description: newServiceDesc.trim(),
         estimatedDurationMinutes: duration,
@@ -258,28 +297,67 @@ export default function QueueManagementScreen() {
               No services added for this branch yet.
             </Text>
           ) : (
-            services.map((srv) => (
-              <View key={srv._id} style={styles.serviceItem}>
-                <View style={styles.serviceLeft}>
-                  <View style={styles.prefixCircle}>
-                    <Text style={styles.prefixText}>{srv.prefix || 'A'}</Text>
+            services.map((srv) => {
+              const isStopped = srv.isActive === false;
+
+              return (
+                <View key={srv._id} style={[styles.serviceItem, isStopped && styles.serviceItemStopped]}>
+                  <View style={styles.serviceHeaderRow}>
+                    <View style={styles.serviceLeft}>
+                      <View style={[styles.prefixCircle, isStopped && styles.prefixCircleStopped]}>
+                        <Text style={[styles.prefixText, isStopped && styles.prefixTextStopped]}>
+                          {srv.prefix || 'A'}
+                        </Text>
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.serviceName, isStopped && styles.serviceNameStopped]}>
+                          {srv.name}
+                        </Text>
+                        <Text style={styles.serviceDetails}>
+                          ⏱ {srv.estimatedDurationMinutes}m consultation • {srv.price > 0 ? `₹${srv.price}` : 'Free pass'}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <Badge
+                      label={isStopped ? '⏸ STOPPED' : '● ACTIVE'}
+                      variant={isStopped ? 'warning' : 'success'}
+                    />
                   </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.serviceName}>{srv.name}</Text>
-                    <Text style={styles.serviceDetails}>
-                      ⏱ {srv.estimatedDurationMinutes}m consultation • {srv.price > 0 ? `₹${srv.price}` : 'Free pass'}
-                    </Text>
+
+                  <View style={styles.serviceActionRow}>
+                    <TouchableOpacity
+                      style={[
+                        styles.toggleServiceBtn,
+                        isStopped ? styles.resumeBtn : styles.stopBtn,
+                      ]}
+                      onPress={() => handleToggleServiceActive(srv)}
+                    >
+                      <Ionicons
+                        name={isStopped ? 'play-circle' : 'pause-circle'}
+                        size={16}
+                        color={isStopped ? '#0B0D0E' : Palette.warning}
+                      />
+                      <Text
+                        style={[
+                          styles.toggleServiceBtnText,
+                          isStopped ? styles.resumeBtnText : styles.stopBtnText,
+                        ]}
+                      >
+                        {isStopped ? 'Continue Service' : 'Stop Service'}
+                      </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={styles.deleteSrvBtn}
+                      onPress={() => handleDeleteService(srv)}
+                    >
+                      <Ionicons name="trash-outline" size={18} color={Palette.danger} />
+                    </TouchableOpacity>
                   </View>
                 </View>
-
-                <TouchableOpacity
-                  style={styles.deleteSrvBtn}
-                  onPress={() => handleDeleteService(srv)}
-                >
-                  <Ionicons name="trash-outline" size={18} color={Palette.danger} />
-                </TouchableOpacity>
-              </View>
-            ))
+              );
+            })
           )}
 
           <Button
@@ -466,12 +544,18 @@ const styles = StyleSheet.create({
     marginVertical: Spacing.md,
   },
   serviceItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     paddingVertical: Spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: Palette.border,
+  },
+  serviceItemStopped: {
+    opacity: 0.75,
+  },
+  serviceHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: Spacing.sm,
   },
   serviceLeft: {
     flexDirection: 'row',
@@ -487,20 +571,63 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  prefixCircleStopped: {
+    backgroundColor: 'rgba(255, 179, 0, 0.12)',
+  },
   prefixText: {
     fontSize: 16,
     fontWeight: '800',
     color: Palette.primary,
+  },
+  prefixTextStopped: {
+    color: Palette.warning,
   },
   serviceName: {
     fontSize: 15,
     fontWeight: '700',
     color: Palette.text,
   },
+  serviceNameStopped: {
+    color: Palette.mutedText,
+  },
   serviceDetails: {
     fontSize: 12,
     color: Palette.mutedText,
     marginTop: 2,
+  },
+  serviceActionRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: Spacing.xs,
+    paddingTop: Spacing.xs,
+  },
+  toggleServiceBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 6,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+  },
+  stopBtn: {
+    backgroundColor: 'rgba(255, 179, 0, 0.08)',
+    borderColor: 'rgba(255, 179, 0, 0.4)',
+  },
+  resumeBtn: {
+    backgroundColor: Palette.primary,
+    borderColor: Palette.primary,
+  },
+  toggleServiceBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  stopBtnText: {
+    color: Palette.warning,
+  },
+  resumeBtnText: {
+    color: '#0B0D0E',
   },
   deleteSrvBtn: {
     padding: Spacing.xs,

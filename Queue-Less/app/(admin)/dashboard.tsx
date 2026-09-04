@@ -19,6 +19,7 @@ import Card from '../../components/common/Card';
 import Badge from '../../components/common/Badge';
 import Button from '../../components/common/Button';
 import businessService from '../../services/businessService';
+import serviceService from '../../services/serviceService';
 import queueService from '../../services/queueService';
 import { joinQueueRoom, leaveQueueRoom, onQueueUpdate } from '../../services/socket';
 import { Business, Branch } from '../../types/business';
@@ -231,11 +232,25 @@ export default function AdminDashboardScreen() {
       if (activeQueue.status === 'OPEN') {
         const updated = await queueService.pauseQueue(activeQueue._id);
         setActiveQueue(updated);
-        Alert.alert('Queue Paused', 'New customers cannot join while paused.');
+        if (selectedService?._id) {
+          try {
+            await serviceService.toggleServiceStatus(selectedService._id, false);
+          } catch (e) {
+            console.log('Error syncing service state:', e);
+          }
+        }
+        Alert.alert('Queue Paused & Service Stopped', 'New customers cannot join while paused.');
       } else if (activeQueue.status === 'PAUSED') {
         const updated = await queueService.resumeQueue(activeQueue._id);
         setActiveQueue(updated);
-        Alert.alert('Queue Resumed', 'Queue is now open.');
+        if (selectedService?._id) {
+          try {
+            await serviceService.toggleServiceStatus(selectedService._id, true);
+          } catch (e) {
+            console.log('Error syncing service state:', e);
+          }
+        }
+        Alert.alert('Queue Resumed & Service Active', 'Queue is now open for customer tokens.');
       } else {
         Alert.alert('Notice', 'Queue is closed.');
       }
